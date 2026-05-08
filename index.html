@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="封入封緘作業用タイムキーパーアプリ。3Dキャラクターと音声でペースを支援します。">
     <title>封入封緘タイムキーパー</title>
-    <!-- インライン SVG の favicon（外部ファイル不要、404 回避） -->
+    <!-- インライン SVG の favicon -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%232563eb'/%3E%3Ctext x='50%25' y='62%25' font-size='40' text-anchor='middle' fill='white' font-family='sans-serif'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="style.css">
 
@@ -26,57 +26,46 @@
             <p class="subtitle">3Dキャラクターと一緒に、コツコツ作業しよう！</p>
         </header>
 
-        <main class="main-grid">
-            <!-- 左カラム: 3Dキャラクター表示エリア -->
-            <section class="character-panel">
-                <h2 class="panel-title">マスコット</h2>
-
-                <div id="canvas-container" class="canvas-container">
-                    <!-- ロード中インジケータ -->
-                    <div id="loading-overlay" class="loading-overlay">
-                        <div class="spinner"></div>
-                        <span>モデルを読み込み中...</span>
-                    </div>
-                    <!-- ドラッグ&ドロップ時のオーバーレイ -->
-                    <div id="drop-overlay" class="drop-overlay">
-                        <span>ここに .glb ファイルをドロップ</span>
-                    </div>
-                </div>
-
-                <!-- モデル読み込み用 UI -->
-                <div class="model-controls">
-                    <label for="glb-file" class="file-label">
-                        📁 別の .glb をアップロード
-                    </label>
-                    <input type="file" id="glb-file" accept=".glb,.gltf" hidden>
-                    <button id="reset-model-btn" class="btn btn-ghost btn-small" title="デフォルトモデルに戻す">
-                        🔄 デフォルトに戻す
-                    </button>
-                </div>
-
-                <p class="hint">
-                    ※ 起動時はリポジトリ内の <code>assets/character.glb</code> を自動読み込み<br>
-                    　ファイル選択 or D&amp;D で差し替え可能
-                </p>
-            </section>
-
-            <!-- 右カラム: タイマー表示・操作 -->
+        <main class="main">
+            <!-- ========== 主役: デジタル時計風タイマー ========== -->
             <section class="timer-panel">
-                <!-- 現在の状態 -->
+                <!-- 状態バー -->
                 <div class="status-bar">
                     <span id="status-label" class="status-label status-idle">待機中</span>
                     <span id="set-info" class="set-info">セット 0 / 0</span>
                 </div>
 
-                <!-- 円形プログレス + 残り時間表示 -->
-                <div class="timer-display">
-                    <svg class="progress-ring" viewBox="0 0 220 220" aria-hidden="true">
-                        <circle class="progress-ring-bg" cx="110" cy="110" r="100"></circle>
-                        <circle id="progress-ring-fg" class="progress-ring-fg" cx="110" cy="110" r="100"></circle>
-                    </svg>
-                    <div class="time-text">
-                        <div id="time-remaining" class="time-remaining">00:00</div>
+                <!-- ★ デジタル時計風ディスプレイ ★ -->
+                <div class="clock-display">
+                    <!-- 進捗を示す薄いバー（液晶パネル下部） -->
+                    <div class="clock-screen">
+                        <!-- 左上のラベル（AM/PM風の代わりに「作業中/休憩中」） -->
+                        <div class="clock-corner-label" id="clock-corner-label">READY</div>
+                        <!-- ベル風アイコン -->
+                        <div class="clock-bell" id="clock-bell" aria-hidden="true">🔔</div>
+
+                        <!-- 大きなデジタル数字 -->
+                        <div id="time-remaining" class="time-digits">00:00</div>
+
+                        <!-- フェーズ説明 -->
                         <div id="phase-text" class="phase-text">スタートを押してね</div>
+
+                        <!-- 進捗バー -->
+                        <div class="progress-bar">
+                            <div id="progress-bar-fg" class="progress-bar-fg"></div>
+                        </div>
+                    </div>
+
+                    <!-- ★ 右下にちょこんと座るマスコット ★ -->
+                    <div class="mascot-corner">
+                        <div id="canvas-container" class="canvas-container">
+                            <div id="loading-overlay" class="loading-overlay">
+                                <div class="spinner"></div>
+                            </div>
+                            <div id="drop-overlay" class="drop-overlay">
+                                <span>GLB を<br>ドロップ</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -86,11 +75,17 @@
                     <button id="pause-btn" class="btn btn-secondary" disabled>⏸ 一時停止</button>
                     <button id="reset-btn" class="btn btn-ghost">⏹ リセット</button>
                 </div>
+            </section>
 
-                <!-- ----- スケジュールモード切替 ----- -->
-                <div class="settings">
-                    <div class="settings-header">
-                        <h3>⚙️ スケジュール</h3>
+            <!-- ========== 設定エリア（折りたたみで邪魔にならない） ========== -->
+            <section class="settings-section">
+
+                <!-- スケジュール設定 -->
+                <details class="settings collapsible" open>
+                    <summary><h3>⚙️ スケジュール</h3></summary>
+
+                    <div class="settings-header" style="margin-top:8px">
+                        <span></span>
                         <div class="mode-tabs" role="tablist">
                             <button class="mode-tab active" data-mode="duration" role="tab">
                                 ⏱ 時間指定
@@ -101,7 +96,6 @@
                         </div>
                     </div>
 
-                    <!-- ===== モード1: 時間指定（duration）===== -->
                     <div id="mode-duration" class="mode-pane active">
                         <div class="setting-row">
                             <label for="work-minutes">作業時間（分）</label>
@@ -117,30 +111,42 @@
                         </div>
                     </div>
 
-                    <!-- ===== モード2: 時刻指定（schedule）===== -->
                     <div id="mode-schedule" class="mode-pane">
                         <p class="hint" style="margin-bottom:8px">
                             各セットの「作業の開始-終了時刻」を指定します。<br>
                             開始時刻が現在より前のセットは自動でスキップされます。
                         </p>
-                        <div id="schedule-list" class="schedule-list">
-                            <!-- 行は JS で動的生成 -->
-                        </div>
+                        <div id="schedule-list" class="schedule-list"></div>
                         <div class="schedule-actions">
                             <button id="add-schedule-btn" class="btn btn-ghost btn-small">＋ セットを追加</button>
-                            <button id="preset-schedule-btn" class="btn btn-ghost btn-small" title="例: 08:30-09:50, 10:00-10:50, 11:00-11:50">
-                                例を入れる
-                            </button>
+                            <button id="preset-schedule-btn" class="btn btn-ghost btn-small">例を入れる</button>
                         </div>
                     </div>
-                </div>
+                </details>
 
-                <!-- ----- 音声・通知設定 ----- -->
+                <!-- マスコット切替 -->
                 <details class="settings collapsible">
-                    <summary><h3 style="display:inline">🔊 音声・通知設定</h3></summary>
+                    <summary><h3>🤖 マスコット</h3></summary>
+                    <div class="model-controls" style="margin-top:8px">
+                        <label for="glb-file" class="file-label">
+                            📁 別の .glb をアップロード
+                        </label>
+                        <input type="file" id="glb-file" accept=".glb,.gltf" hidden>
+                        <button id="reset-model-btn" class="btn btn-ghost btn-small" title="デフォルトモデルに戻す">
+                            🔄 デフォルトに戻す
+                        </button>
+                    </div>
+                    <p class="hint">
+                        ※ 起動時はリポジトリ内の <code>assets/character.glb</code> を自動読み込み。<br>
+                        　右下のマスコット枠へ <strong>ドラッグ&amp;ドロップ</strong> でも差し替え可能。
+                    </p>
+                </details>
 
-                    <!-- 励ましボイス -->
-                    <div class="setting-row toggle-row">
+                <!-- 音声・通知設定 -->
+                <details class="settings collapsible">
+                    <summary><h3>🔊 音声・通知設定</h3></summary>
+
+                    <div class="setting-row toggle-row" style="margin-top:8px">
                         <label for="encourage-toggle">励ましボイス</label>
                         <label class="switch">
                             <input type="checkbox" id="encourage-toggle" checked>
@@ -148,7 +154,6 @@
                         </label>
                     </div>
 
-                    <!-- 音声モデル選択 -->
                     <div class="setting-row">
                         <label for="voice-select">音声モデル</label>
                         <select id="voice-select"></select>
@@ -166,12 +171,11 @@
                         <button id="voice-stop-btn" class="btn btn-ghost btn-small">■ 停止</button>
                     </div>
 
-                    <!-- セリフ編集 -->
                     <h4 class="subsection-title">📝 セリフ編集</h4>
                     <p class="hint" style="margin:4px 0 8px">
-                        以下のプレースホルダが使えます:<br>
-                        <code>{set}</code>=現在セット番号 / <code>{total}</code>=総セット数 /
-                        <code>{remain}</code>=残り分 / <code>{end}</code>=終了時刻 (HH:MM)
+                        プレースホルダ:
+                        <code>{set}</code>=セット番号 / <code>{total}</code>=総セット数 /
+                        <code>{remain}</code>=残り分 / <code>{end}</code>=終了時刻
                     </p>
                     <div class="script-editor">
                         <label>作業開始</label>

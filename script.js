@@ -580,7 +580,8 @@ const statusLabel     = document.getElementById('status-label');
 const setInfo         = document.getElementById('set-info');
 const timeRemainingEl = document.getElementById('time-remaining');
 const phaseText       = document.getElementById('phase-text');
-const progressRingFg  = document.getElementById('progress-ring-fg');
+const progressBarFg   = document.getElementById('progress-bar-fg');
+const clockCornerLabel = document.getElementById('clock-corner-label');
 
 const modeTabs        = document.querySelectorAll('.mode-tab');
 const modePanes = {
@@ -591,7 +592,7 @@ const scheduleList    = document.getElementById('schedule-list');
 const addScheduleBtn  = document.getElementById('add-schedule-btn');
 const presetScheduleBtn = document.getElementById('preset-schedule-btn');
 
-const RING_CIRC = 2 * Math.PI * 100;
+// 進捗バー（横長バー）用：パーセントで幅を制御するので円周計算は不要
 
 const STATE = Object.freeze({ IDLE: 'idle', WORK: 'work', BREAK: 'break', DONE: 'done' });
 
@@ -1010,6 +1011,7 @@ function updateUI() {
             document.body.classList.add('state-work');
             statusLabel.classList.add('status-work');
             statusLabel.textContent = '作業中';
+            if (clockCornerLabel) clockCornerLabel.textContent = 'WORK';
             phaseText.textContent = timerState.phaseEndHHMM
                 ? `終了予定 ${timerState.phaseEndHHMM}`
                 : '集中していこう！';
@@ -1018,6 +1020,7 @@ function updateUI() {
             document.body.classList.add('state-break');
             statusLabel.classList.add('status-break');
             statusLabel.textContent = '休憩中';
+            if (clockCornerLabel) clockCornerLabel.textContent = 'BREAK';
             phaseText.textContent = timerState.phaseEndHHMM
                 ? `次の作業 ${timerState.phaseEndHHMM} から`
                 : 'ひと息つこう ☕';
@@ -1026,6 +1029,7 @@ function updateUI() {
             document.body.classList.add('state-done');
             statusLabel.classList.add('status-done');
             statusLabel.textContent = '完了';
+            if (clockCornerLabel) clockCornerLabel.textContent = 'DONE';
             phaseText.textContent = 'お疲れ様でした！';
             break;
         case STATE.IDLE:
@@ -1033,6 +1037,7 @@ function updateUI() {
             document.body.classList.add('state-idle');
             statusLabel.classList.add('status-idle');
             statusLabel.textContent = '待機中';
+            if (clockCornerLabel) clockCornerLabel.textContent = 'READY';
             phaseText.textContent = 'スタートを押してね';
             break;
     }
@@ -1044,7 +1049,8 @@ function updateUI() {
     } else if (timerState.phase === STATE.DONE) {
         progress = 1;
     }
-    progressRingFg.style.strokeDashoffset = String(RING_CIRC * (1 - progress));
+    // 横長プログレスバーの幅を progress (0-1) に応じて更新
+    if (progressBarFg) progressBarFg.style.width = `${(progress * 100).toFixed(2)}%`;
 
     startBtn.disabled = timerState.isRunning || timerState.phase === STATE.DONE;
     pauseBtn.disabled = !timerState.isRunning;
