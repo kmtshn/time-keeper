@@ -55,6 +55,9 @@ function defaultSettings() {
         voiceRate: 1.0,
         voicePitch: 1.05,
         scripts: { ...DEFAULT_SCRIPTS },
+        // ★ マスコットの向き（度）。yaw=Y軸回転（左右）、pitch=X軸回転（上下うなずき）
+        mascotYawDeg: 0,
+        mascotPitchDeg: 0,
     };
 }
 
@@ -218,6 +221,10 @@ function placeModel(model) {
     model.position.x = -center.x * scale;
     model.position.z = -center.z * scale;
     model.position.y = -box.min.y * scale;
+
+    // 3.5) ★ ユーザー設定の向き（yaw/pitch）を適用
+    model.rotation.y = THREE.MathUtils.degToRad(settings.mascotYawDeg || 0);
+    model.rotation.x = THREE.MathUtils.degToRad(settings.mascotPitchDeg || 0);
 
     scene.add(model);
     currentModel = model;
@@ -389,6 +396,67 @@ resetModelBtn.addEventListener('click', () => {
     fileInput.value = '';
     loadDefaultModel();
 });
+
+/* ---------- マスコットの向き（yaw/pitch）UI ---------- */
+const mascotYawInput   = document.getElementById('mascot-yaw');
+const mascotPitchInput = document.getElementById('mascot-pitch');
+const mascotYawVal     = document.getElementById('mascot-yaw-val');
+const mascotPitchVal   = document.getElementById('mascot-pitch-val');
+const mascotOrientReset = document.getElementById('mascot-orient-reset');
+const orientPresets    = document.querySelectorAll('.orient-preset');
+
+/** 設定値からスライダーUIへ反映 */
+function syncOrientationUI() {
+    if (mascotYawInput)   mascotYawInput.value   = settings.mascotYawDeg;
+    if (mascotPitchInput) mascotPitchInput.value = settings.mascotPitchDeg;
+    if (mascotYawVal)     mascotYawVal.textContent   = `${settings.mascotYawDeg}°`;
+    if (mascotPitchVal)   mascotPitchVal.textContent = `${settings.mascotPitchDeg}°`;
+}
+
+/** 現在のモデルに向きをリアルタイム反映 */
+function applyOrientationToModel() {
+    if (!currentModel) return;
+    currentModel.rotation.y = THREE.MathUtils.degToRad(settings.mascotYawDeg || 0);
+    currentModel.rotation.x = THREE.MathUtils.degToRad(settings.mascotPitchDeg || 0);
+}
+
+if (mascotYawInput) {
+    mascotYawInput.addEventListener('input', () => {
+        settings.mascotYawDeg = parseInt(mascotYawInput.value, 10) || 0;
+        if (mascotYawVal) mascotYawVal.textContent = `${settings.mascotYawDeg}°`;
+        applyOrientationToModel();
+        saveSettings();
+    });
+}
+if (mascotPitchInput) {
+    mascotPitchInput.addEventListener('input', () => {
+        settings.mascotPitchDeg = parseInt(mascotPitchInput.value, 10) || 0;
+        if (mascotPitchVal) mascotPitchVal.textContent = `${settings.mascotPitchDeg}°`;
+        applyOrientationToModel();
+        saveSettings();
+    });
+}
+if (mascotOrientReset) {
+    mascotOrientReset.addEventListener('click', () => {
+        settings.mascotYawDeg = 0;
+        settings.mascotPitchDeg = 0;
+        syncOrientationUI();
+        applyOrientationToModel();
+        saveSettings();
+    });
+}
+orientPresets.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const yaw = parseInt(btn.dataset.yaw, 10) || 0;
+        settings.mascotYawDeg = yaw;
+        syncOrientationUI();
+        applyOrientationToModel();
+        saveSettings();
+    });
+});
+
+// 起動時：保存済みの値をUIへ反映
+syncOrientationUI();
 
 // D&D
 ['dragenter', 'dragover'].forEach((evt) => {
@@ -580,9 +648,26 @@ const encourageToggle = document.getElementById('encourage-toggle');
 const statusLabel     = document.getElementById('status-label');
 const setInfo         = document.getElementById('set-info');
 const timeRemainingEl = document.getElementById('time-remaining');
+const segMM           = timeRemainingEl?.querySelector('.seg-mm');
+const segSS           = timeRemainingEl?.querySelector('.seg-ss');
+const segColon        = timeRemainingEl?.querySelector('.seg-colon');
 const phaseText       = document.getElementById('phase-text');
 const progressBarFg   = document.getElementById('progress-bar-fg');
+const progressSegments = document.getElementById('progress-segments');
 const clockCornerLabel = document.getElementById('clock-corner-label');
+const clockCornerText  = document.getElementById('clock-corner-text');
+const clockMiniSet     = document.getElementById('clock-mini-set');
+
+// 10セグメント風プログレスバーを生成（20個 = 5%刻み）
+const PROGRESS_SEG_COUNT = 20;
+if (progressSegments) {
+    for (let i = 0; i < PROGRESS_SEG_COUNT; i++) {
+        const s = document.createElement('span');
+        s.className = 'pseg';
+        progressSegments.appendChild(s);
+    }
+}
+const progressSegEls = progressSegments ? Array.from(progressSegments.children) : [];
 
 const modeTabs        = document.querySelectorAll('.mode-tab');
 const modePanes = {
@@ -990,18 +1075,34 @@ function setScheduleInputsDisabled(disabled) {
 /* ---------- UI 更新 ---------- */
 
 function updateUI() {
-    timeRemainingEl.textContent = formatTime(timerState.remainingSec);
+    // ★ 7セグ風: mm と ss を別々の span に書き込み（「:」コロンは点滅用に独立）
+    const totalSec = Math.max(0, Math.floor(timerState.remainingSec));
+    const mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
+    const ss = String(totalSec % 60).padStart(2, '0');
+    if (segMM && segSS) {
+        segMM.textContent = mm;
+        segSS.textContent = ss;
+    } else {
+        timeRemainingEl.textContent = `${mm}:${ss}`;
+    }
 
     if (timerState.isRunning && timerState.remainingSec <= 10 && timerState.remainingSec > 0) {
         timeRemainingEl.classList.add('warning');
     } else {
         timeRemainingEl.classList.remove('warning');
     }
+    // 動作中はコロンを点滅
+    if (segColon) {
+        segColon.classList.toggle('blink', timerState.isRunning);
+    }
 
-    if (timerState.phase === STATE.IDLE) {
-        setInfo.textContent = `セット 0 / ${guessTotalSetsForDisplay()}`;
-    } else {
-        setInfo.textContent = `セット ${timerState.currentSet} / ${timerState.totalSets}`;
+    const setsTotal = (timerState.phase === STATE.IDLE)
+        ? guessTotalSetsForDisplay()
+        : timerState.totalSets;
+    const setsCurrent = (timerState.phase === STATE.IDLE) ? 0 : timerState.currentSet;
+    setInfo.textContent = `セット ${setsCurrent} / ${setsTotal}`;
+    if (clockMiniSet) {
+        clockMiniSet.textContent = `${String(setsCurrent).padStart(2, '0')}/${String(setsTotal).padStart(2, '0')}`;
     }
 
     document.body.classList.remove('state-idle', 'state-work', 'state-break', 'state-done');
@@ -1012,7 +1113,7 @@ function updateUI() {
             document.body.classList.add('state-work');
             statusLabel.classList.add('status-work');
             statusLabel.textContent = '作業中';
-            if (clockCornerLabel) clockCornerLabel.textContent = 'WORK';
+            if (clockCornerText) clockCornerText.textContent = 'WORK';
             phaseText.textContent = timerState.phaseEndHHMM
                 ? `終了予定 ${timerState.phaseEndHHMM}`
                 : '集中していこう！';
@@ -1021,7 +1122,7 @@ function updateUI() {
             document.body.classList.add('state-break');
             statusLabel.classList.add('status-break');
             statusLabel.textContent = '休憩中';
-            if (clockCornerLabel) clockCornerLabel.textContent = 'BREAK';
+            if (clockCornerText) clockCornerText.textContent = 'BREAK';
             phaseText.textContent = timerState.phaseEndHHMM
                 ? `次の作業 ${timerState.phaseEndHHMM} から`
                 : 'ひと息つこう ☕';
@@ -1030,7 +1131,7 @@ function updateUI() {
             document.body.classList.add('state-done');
             statusLabel.classList.add('status-done');
             statusLabel.textContent = '完了';
-            if (clockCornerLabel) clockCornerLabel.textContent = 'DONE';
+            if (clockCornerText) clockCornerText.textContent = 'DONE';
             phaseText.textContent = 'お疲れ様でした！';
             break;
         case STATE.IDLE:
@@ -1038,7 +1139,7 @@ function updateUI() {
             document.body.classList.add('state-idle');
             statusLabel.classList.add('status-idle');
             statusLabel.textContent = '待機中';
-            if (clockCornerLabel) clockCornerLabel.textContent = 'READY';
+            if (clockCornerText) clockCornerText.textContent = 'READY';
             phaseText.textContent = 'スタートを押してね';
             break;
     }
@@ -1052,6 +1153,11 @@ function updateUI() {
     }
     // 横長プログレスバーの幅を progress (0-1) に応じて更新
     if (progressBarFg) progressBarFg.style.width = `${(progress * 100).toFixed(2)}%`;
+    // 10セグ風プログレスバーの点灯数を更新
+    if (progressSegEls.length) {
+        const lit = Math.round(progress * progressSegEls.length);
+        progressSegEls.forEach((el, i) => el.classList.toggle('on', i < lit));
+    }
 
     startBtn.disabled = timerState.isRunning || timerState.phase === STATE.DONE;
     pauseBtn.disabled = !timerState.isRunning;
