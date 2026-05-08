@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="封入封緘作業用タイムキーパーアプリ。3Dキャラクターと音声でペースを支援します。">
+    <title>封入封緘タイムキーパー</title>
+    <!-- インライン SVG の favicon（外部ファイル不要、404 回避） -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2712%27 fill=%27%232563eb%27/%3E%3Ctext x=%2750%25%27 y=%2762%25%27 font-size=%2740%27 text-anchor=%27middle%27 fill=%27white%27 font-family=%27sans-serif%27%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Three.js は CDN 経由で読み込み（GitHub Pages 配信前提） -->
+    <!-- import map を使い、GLTFLoader 等の例の追加モジュールを解決する -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <!-- 状態に応じて body の class が切り替わる（CSS で背景色を変える）-->
+    <div class="app">
+        <header class="header">
+            <h1>📦 封入封緘タイムキーパー</h1>
+            <p class="subtitle">3Dキャラクターと一緒に、コツコツ作業しよう！</p>
+        </header>
+
+        <main class="main-grid">
+            <!-- 左カラム: 3Dキャラクター表示エリア -->
+            <section class="character-panel">
+                <h2 class="panel-title">マスコット</h2>
+
+                <!-- Three.js のレンダリング先 -->
+                <div id="canvas-container" class="canvas-container">
+                    <!-- canvas は Three.js が動的に挿入する -->
+                    <div id="drop-overlay" class="drop-overlay">
+                        <span>ここに .glb ファイルをドロップ</span>
+                    </div>
+                </div>
+
+                <!-- モデル読み込み用 UI -->
+                <div class="model-controls">
+                    <label for="glb-file" class="file-label">
+                        📁 .glb モデルを選択
+                    </label>
+                    <input type="file" id="glb-file" accept=".glb,.gltf" hidden>
+                    <button id="reset-model-btn" class="btn btn-ghost btn-small" title="プレースホルダーに戻す">
+                        🔄 デフォルト
+                    </button>
+                </div>
+
+                <p class="hint">
+                    ※ .glb ファイルをドラッグ＆ドロップでも読み込めます
+                </p>
+            </section>
+
+            <!-- 右カラム: タイマー表示・操作 -->
+            <section class="timer-panel">
+                <!-- 現在の状態（作業中/休憩中/待機中） -->
+                <div class="status-bar">
+                    <span id="status-label" class="status-label status-idle">待機中</span>
+                    <span id="set-info" class="set-info">セット 0 / 0</span>
+                </div>
+
+                <!-- 円形プログレス + 残り時間表示 -->
+                <div class="timer-display">
+                    <svg class="progress-ring" viewBox="0 0 220 220" aria-hidden="true">
+                        <!-- 背景の円（薄いグレー） -->
+                        <circle class="progress-ring-bg" cx="110" cy="110" r="100"></circle>
+                        <!-- 進捗を示す円（JS で stroke-dashoffset を更新） -->
+                        <circle id="progress-ring-fg" class="progress-ring-fg" cx="110" cy="110" r="100"></circle>
+                    </svg>
+                    <div class="time-text">
+                        <div id="time-remaining" class="time-remaining">00:00</div>
+                        <div id="phase-text" class="phase-text">スタートを押してね</div>
+                    </div>
+                </div>
+
+                <!-- 操作ボタン -->
+                <div class="control-buttons">
+                    <button id="start-btn" class="btn btn-primary">▶ スタート</button>
+                    <button id="pause-btn" class="btn btn-secondary" disabled>⏸ 一時停止</button>
+                    <button id="reset-btn" class="btn btn-ghost">⏹ リセット</button>
+                </div>
+
+                <!-- 設定パネル -->
+                <div class="settings">
+                    <h3>⚙️ 設定</h3>
+
+                    <div class="setting-row">
+                        <label for="work-minutes">作業時間（分）</label>
+                        <input type="number" id="work-minutes" min="1" max="180" value="25">
+                    </div>
+
+                    <div class="setting-row">
+                        <label for="break-minutes">休憩時間（分）</label>
+                        <input type="number" id="break-minutes" min="1" max="60" value="5">
+                    </div>
+
+                    <div class="setting-row">
+                        <label for="total-sets">セット数</label>
+                        <input type="number" id="total-sets" min="1" max="20" value="3">
+                    </div>
+
+                    <!-- 励ましボイス ON/OFF トグル -->
+                    <div class="setting-row toggle-row">
+                        <label for="encourage-toggle">励ましボイス</label>
+                        <label class="switch">
+                            <input type="checkbox" id="encourage-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- 音声選択（任意。日本語音声があれば優先） -->
+                    <div class="setting-row">
+                        <label for="voice-select">音声</label>
+                        <select id="voice-select"></select>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <small>© Timekeeper for Envelope Stuffing &middot; Three.js + Web Speech API</small>
+        </footer>
+    </div>
+
+    <!-- メインスクリプト（モジュール） -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
