@@ -6,11 +6,10 @@
     <meta name="description" content="封入封緘作業用タイムキーパーアプリ。3Dキャラクターと音声でペースを支援します。">
     <title>封入封緘タイムキーパー</title>
     <!-- インライン SVG の favicon（外部ファイル不要、404 回避） -->
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2712%27 fill=%27%232563eb%27/%3E%3Ctext x=%2750%25%27 y=%2762%25%27 font-size=%2740%27 text-anchor=%27middle%27 fill=%27white%27 font-family=%27sans-serif%27%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%232563eb'/%3E%3Ctext x='50%25' y='62%25' font-size='40' text-anchor='middle' fill='white' font-family='sans-serif'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="style.css">
 
     <!-- Three.js は CDN 経由で読み込み（GitHub Pages 配信前提） -->
-    <!-- import map を使い、GLTFLoader 等の例の追加モジュールを解決する -->
     <script type="importmap">
     {
         "imports": {
@@ -21,7 +20,6 @@
     </script>
 </head>
 <body>
-    <!-- 状態に応じて body の class が切り替わる（CSS で背景色を変える）-->
     <div class="app">
         <header class="header">
             <h1>📦 封入封緘タイムキーパー</h1>
@@ -33,9 +31,13 @@
             <section class="character-panel">
                 <h2 class="panel-title">マスコット</h2>
 
-                <!-- Three.js のレンダリング先 -->
                 <div id="canvas-container" class="canvas-container">
-                    <!-- canvas は Three.js が動的に挿入する -->
+                    <!-- ロード中インジケータ -->
+                    <div id="loading-overlay" class="loading-overlay">
+                        <div class="spinner"></div>
+                        <span>モデルを読み込み中...</span>
+                    </div>
+                    <!-- ドラッグ&ドロップ時のオーバーレイ -->
                     <div id="drop-overlay" class="drop-overlay">
                         <span>ここに .glb ファイルをドロップ</span>
                     </div>
@@ -44,22 +46,23 @@
                 <!-- モデル読み込み用 UI -->
                 <div class="model-controls">
                     <label for="glb-file" class="file-label">
-                        📁 .glb モデルを選択
+                        📁 別の .glb をアップロード
                     </label>
                     <input type="file" id="glb-file" accept=".glb,.gltf" hidden>
-                    <button id="reset-model-btn" class="btn btn-ghost btn-small" title="プレースホルダーに戻す">
-                        🔄 デフォルト
+                    <button id="reset-model-btn" class="btn btn-ghost btn-small" title="デフォルトモデルに戻す">
+                        🔄 デフォルトに戻す
                     </button>
                 </div>
 
                 <p class="hint">
-                    ※ .glb ファイルをドラッグ＆ドロップでも読み込めます
+                    ※ 起動時はリポジトリ内の <code>assets/character.glb</code> を自動読み込み<br>
+                    　ファイル選択 or D&amp;D で差し替え可能
                 </p>
             </section>
 
             <!-- 右カラム: タイマー表示・操作 -->
             <section class="timer-panel">
-                <!-- 現在の状態（作業中/休憩中/待機中） -->
+                <!-- 現在の状態 -->
                 <div class="status-bar">
                     <span id="status-label" class="status-label status-idle">待機中</span>
                     <span id="set-info" class="set-info">セット 0 / 0</span>
@@ -68,9 +71,7 @@
                 <!-- 円形プログレス + 残り時間表示 -->
                 <div class="timer-display">
                     <svg class="progress-ring" viewBox="0 0 220 220" aria-hidden="true">
-                        <!-- 背景の円（薄いグレー） -->
                         <circle class="progress-ring-bg" cx="110" cy="110" r="100"></circle>
-                        <!-- 進捗を示す円（JS で stroke-dashoffset を更新） -->
                         <circle id="progress-ring-fg" class="progress-ring-fg" cx="110" cy="110" r="100"></circle>
                     </svg>
                     <div class="time-text">
@@ -86,26 +87,59 @@
                     <button id="reset-btn" class="btn btn-ghost">⏹ リセット</button>
                 </div>
 
-                <!-- 設定パネル -->
+                <!-- ----- スケジュールモード切替 ----- -->
                 <div class="settings">
-                    <h3>⚙️ 設定</h3>
-
-                    <div class="setting-row">
-                        <label for="work-minutes">作業時間（分）</label>
-                        <input type="number" id="work-minutes" min="1" max="180" value="25">
+                    <div class="settings-header">
+                        <h3>⚙️ スケジュール</h3>
+                        <div class="mode-tabs" role="tablist">
+                            <button class="mode-tab active" data-mode="duration" role="tab">
+                                ⏱ 時間指定
+                            </button>
+                            <button class="mode-tab" data-mode="schedule" role="tab">
+                                🕐 時刻指定
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="setting-row">
-                        <label for="break-minutes">休憩時間（分）</label>
-                        <input type="number" id="break-minutes" min="1" max="60" value="5">
+                    <!-- ===== モード1: 時間指定（duration）===== -->
+                    <div id="mode-duration" class="mode-pane active">
+                        <div class="setting-row">
+                            <label for="work-minutes">作業時間（分）</label>
+                            <input type="number" id="work-minutes" min="1" max="180" value="25">
+                        </div>
+                        <div class="setting-row">
+                            <label for="break-minutes">休憩時間（分）</label>
+                            <input type="number" id="break-minutes" min="0" max="60" value="5">
+                        </div>
+                        <div class="setting-row">
+                            <label for="total-sets">セット数</label>
+                            <input type="number" id="total-sets" min="1" max="20" value="3">
+                        </div>
                     </div>
 
-                    <div class="setting-row">
-                        <label for="total-sets">セット数</label>
-                        <input type="number" id="total-sets" min="1" max="20" value="3">
+                    <!-- ===== モード2: 時刻指定（schedule）===== -->
+                    <div id="mode-schedule" class="mode-pane">
+                        <p class="hint" style="margin-bottom:8px">
+                            各セットの「作業の開始-終了時刻」を指定します。<br>
+                            開始時刻が現在より前のセットは自動でスキップされます。
+                        </p>
+                        <div id="schedule-list" class="schedule-list">
+                            <!-- 行は JS で動的生成 -->
+                        </div>
+                        <div class="schedule-actions">
+                            <button id="add-schedule-btn" class="btn btn-ghost btn-small">＋ セットを追加</button>
+                            <button id="preset-schedule-btn" class="btn btn-ghost btn-small" title="例: 08:30-09:50, 10:00-10:50, 11:00-11:50">
+                                例を入れる
+                            </button>
+                        </div>
                     </div>
+                </div>
 
-                    <!-- 励ましボイス ON/OFF トグル -->
+                <!-- ----- 音声・通知設定 ----- -->
+                <details class="settings collapsible">
+                    <summary><h3 style="display:inline">🔊 音声・通知設定</h3></summary>
+
+                    <!-- 励ましボイス -->
                     <div class="setting-row toggle-row">
                         <label for="encourage-toggle">励ましボイス</label>
                         <label class="switch">
@@ -114,12 +148,52 @@
                         </label>
                     </div>
 
-                    <!-- 音声選択（任意。日本語音声があれば優先） -->
+                    <!-- 音声モデル選択 -->
                     <div class="setting-row">
-                        <label for="voice-select">音声</label>
+                        <label for="voice-select">音声モデル</label>
                         <select id="voice-select"></select>
                     </div>
-                </div>
+                    <div class="setting-row">
+                        <label for="voice-rate">話速 <span id="voice-rate-val">1.0</span></label>
+                        <input type="range" id="voice-rate" min="0.6" max="1.6" step="0.05" value="1.0">
+                    </div>
+                    <div class="setting-row">
+                        <label for="voice-pitch">音の高さ <span id="voice-pitch-val">1.05</span></label>
+                        <input type="range" id="voice-pitch" min="0.5" max="2.0" step="0.05" value="1.05">
+                    </div>
+                    <div class="setting-row">
+                        <button id="voice-preview-btn" class="btn btn-ghost btn-small">▶ 試し再生</button>
+                        <button id="voice-stop-btn" class="btn btn-ghost btn-small">■ 停止</button>
+                    </div>
+
+                    <!-- セリフ編集 -->
+                    <h4 class="subsection-title">📝 セリフ編集</h4>
+                    <p class="hint" style="margin:4px 0 8px">
+                        以下のプレースホルダが使えます:<br>
+                        <code>{set}</code>=現在セット番号 / <code>{total}</code>=総セット数 /
+                        <code>{remain}</code>=残り分 / <code>{end}</code>=終了時刻 (HH:MM)
+                    </p>
+                    <div class="script-editor">
+                        <label>作業開始</label>
+                        <textarea id="script-work-start" rows="2"></textarea>
+
+                        <label>休憩開始（作業終了）</label>
+                        <textarea id="script-break-start" rows="2"></textarea>
+
+                        <label>全完了</label>
+                        <textarea id="script-all-done" rows="2"></textarea>
+
+                        <label>励まし: 折り返し時</label>
+                        <textarea id="script-encourage-half" rows="2"></textarea>
+
+                        <label>励まし: 残り5分</label>
+                        <textarea id="script-encourage-five" rows="2"></textarea>
+
+                        <div class="script-editor-actions">
+                            <button id="script-reset-btn" class="btn btn-ghost btn-small">セリフを初期値に戻す</button>
+                        </div>
+                    </div>
+                </details>
             </section>
         </main>
 
@@ -128,7 +202,6 @@
         </footer>
     </div>
 
-    <!-- メインスクリプト（モジュール） -->
     <script type="module" src="script.js"></script>
 </body>
 </html>
