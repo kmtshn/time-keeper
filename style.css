@@ -1,7 +1,8 @@
 /* =========================================================
    封入封緘タイムキーパー  スタイルシート
-   - メインは「デジタル時計風タイマー」+「右下にちょこんと座るキャラ」
-   - 状態（待機/作業/休憩）に応じてグラデーション背景を切替
+   - テーマ: ニュートラル（薄いグレー / ホワイト系）
+   - フォント: LINE Seed JP（本文）+ Orbitron（時計の数字のみ）
+   - レイアウト: 時計を完全中央、マスコットは時計の外（下）に独立配置
    ========================================================= */
 
 /* ---------- リセット & 基本 ---------- */
@@ -13,26 +14,54 @@ html, body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
-                 "Meiryo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    color: #1f2937;
-    background: linear-gradient(135deg, #e0e7ff 0%, #f0f9ff 100%);
-    transition: background 0.8s ease;
-    min-height: 100vh;
-    overflow-x: hidden;
+:root {
+    /* ニュートラルパレット（迷わないモダンUI用） */
+    --bg-base: #f5f6f8;
+    --bg-soft: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --accent: #374151;          /* 主アクション: ダークグレー */
+    --accent-hover: #1f2937;
+    --accent-soft: #f3f4f6;
+    --danger: #ef4444;
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.04);
+    --shadow-lg: 0 14px 32px rgba(15, 23, 42, 0.08), 0 4px 10px rgba(15, 23, 42, 0.05);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --radius-xl: 24px;
 }
 
-body.state-idle  { background: linear-gradient(135deg, #e0e7ff 0%, #f0f9ff 100%); }
-body.state-work  { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #38bdf8 100%); color: #f8fafc; }
-body.state-break { background: linear-gradient(135deg, #fb923c 0%, #f59e0b 40%, #34d399 100%); }
-body.state-done  { background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%); color: #fff; }
+body {
+    font-family: "LINE Seed JP", "LINE Seed Sans JP", "Hiragino Sans",
+                 "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo",
+                 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--text-primary);
+    background: var(--bg-base);
+    transition: background 0.5s ease;
+    min-height: 100vh;
+    overflow-x: hidden;
+    font-feature-settings: "palt" 1;
+    letter-spacing: 0.01em;
+}
+
+/* 状態に応じた背景の微妙な変化（青→グレー系に統一、彩度は控えめ） */
+body.state-idle  { background: var(--bg-base); }
+body.state-work  { background: #eef0f3; }
+body.state-break { background: #fff7ed; }   /* ほんのり暖色（ブレイクの認識用） */
+body.state-done  { background: #f5f3ff; }   /* ほんのり淡紫（完了の認識用） */
 
 /* ---------- レイアウト ---------- */
 .app {
-    max-width: 980px;
+    max-width: 720px;
     margin: 0 auto;
-    padding: 24px 16px 48px;
+    padding: 28px 16px 56px;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -41,32 +70,35 @@ body.state-done  { background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%)
 
 .header { text-align: center; }
 .header h1 {
-    font-size: clamp(1.5rem, 4vw, 2.2rem);
-    font-weight: 800;
+    font-size: clamp(1.4rem, 4vw, 1.85rem);
+    font-weight: 700;
     letter-spacing: 0.02em;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    color: var(--text-primary);
 }
-.subtitle { margin-top: 6px; opacity: 0.85; font-size: 0.95rem; }
+.subtitle {
+    margin-top: 6px;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    font-weight: 400;
+}
 
 .main {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 18px;
     flex: 1;
 }
 
 /* ============================================================
-   ★ メイン: デジタル時計風タイマー
+   タイマーパネル（メイン）
    ============================================================ */
 
 .timer-panel {
-    background: rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 24px;
-    padding: 24px;
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.14);
-    color: #1f2937;
+    background: var(--surface);
+    border-radius: var(--radius-xl);
+    padding: 24px 22px 22px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border);
 }
 
 /* ----- 状態バー ----- */
@@ -79,180 +111,163 @@ body.state-done  { background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%)
     gap: 8px;
 }
 .status-label {
-    padding: 6px 14px;
+    padding: 5px 14px;
     border-radius: 999px;
     font-weight: 700;
-    font-size: 0.95rem;
-    color: #fff;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    background: var(--accent-soft);
+    border: 1px solid var(--border);
 }
-.status-idle  { background: #94a3b8; }
-.status-work  { background: #2563eb; }
-.status-break { background: #f59e0b; }
-.status-done  { background: #a855f7; }
-.set-info { font-weight: 700; color: #475569; font-size: 0.95rem; }
+.status-idle  { background: #f3f4f6; color: #6b7280; }
+.status-work  { background: #e5e7eb; color: #1f2937; }
+.status-break { background: #ffedd5; color: #9a3412; }
+.status-done  { background: #ede9fe; color: #5b21b6; }
+.set-info {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
 
 /* ============================================================
-   ★ デジタル時計ディスプレイ（黒い液晶パネル + 水色LED風数字）
+   ★ デジタル時計（中央配置・薄グレー基調・控えめなネオン感）
    ============================================================ */
 
 .clock-display {
-    position: relative;
-    /* 液晶パネルとマスコットの位置決め用コンテナ */
-    margin-bottom: 22px;
-}
-
-/* ============================================================
-   ★ デジタル時計感を強化（7セグ風、走査線、ノイズ、ゴースト数字）
-   ============================================================ */
-
-/* CSS変数でLED色を一元管理（state別に上書きする） */
-.clock-screen {
-    --led-color: #38bdf8;
-    --led-bright: #7dd3fc;
-    --led-dim: rgba(56, 189, 248, 0.10);
-    --led-glow: rgba(56, 189, 248, 0.85);
-}
-
-/* 液晶パネル本体（金属ベゼル + 黒い液晶画面） */
-.clock-screen {
-    position: relative;
-    /* 黒い液晶。中央に薄い縦のビネット */
-    background:
-        radial-gradient(ellipse at 50% 40%, #0a1628 0%, #050810 70%, #02040a 100%);
-    border-radius: 22px;
-    padding: clamp(36px, 6.5vw, 56px) clamp(22px, 5vw, 56px) clamp(56px, 7vw, 80px);
-    /* 金属ベゼル風（外: 明るいグレー、内: 黒のヘアライン） */
-    border: clamp(6px, 1vw, 10px) solid;
-    border-image: linear-gradient(140deg, #f1f5f9 0%, #94a3b8 30%, #cbd5e1 50%, #475569 100%) 1;
-    box-shadow:
-        0 16px 36px rgba(0, 0, 0, 0.35),
-        0 2px 6px rgba(0, 0, 0, 0.2),
-        inset 0 0 40px rgba(0, 0, 0, 0.85),
-        inset 0 0 120px rgba(56, 189, 248, 0.06);
-    min-height: clamp(240px, 32vw, 360px);
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
+    gap: 18px;
+    margin-bottom: 4px;
+}
+
+.clock-screen {
+    /* CSS変数: LED色（ニュートラル基調） */
+    --led-color: #4b5563;
+    --led-bright: #1f2937;
+    --led-dim: rgba(75, 85, 99, 0.15);
+    --led-glow: rgba(75, 85, 99, 0.25);
+
+    position: relative;
+    width: 100%;
+    background:
+        radial-gradient(ellipse at 50% 35%, #ffffff 0%, #f3f4f6 70%, #e5e7eb 100%);
+    border-radius: 22px;
+    padding: 18px 22px 22px;
+    border: 1px solid var(--border);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+        var(--shadow-md);
     overflow: hidden;
 }
 
-/* 走査線（横方向の細かいライン）+ 縦のCRTビーム感 */
+/* 走査線レイヤー（ごく薄く） */
 .clock-scanlines {
-    position: absolute;
-    inset: 0;
+    position: absolute; inset: 0;
     pointer-events: none;
     z-index: 1;
-    background:
-        repeating-linear-gradient(
-            0deg,
-            rgba(255, 255, 255, 0.035) 0px,
-            rgba(255, 255, 255, 0.035) 1px,
-            transparent 1px,
-            transparent 3px
-        );
-    mix-blend-mode: overlay;
-    opacity: 0.9;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.018) 0px,
+        rgba(0, 0, 0, 0.018) 1px,
+        transparent 1px,
+        transparent 4px
+    );
 }
 
-/* 画面のグロー（中央が少し光ってる感じ）+ ピクセルノイズ風ドット */
+/* ピクセルグロー */
 .clock-glow {
-    position: absolute;
-    inset: 0;
+    position: absolute; inset: 0;
     pointer-events: none;
     z-index: 1;
     background:
-        radial-gradient(ellipse at 50% 45%, rgba(56, 189, 248, 0.08) 0%, transparent 55%),
-        radial-gradient(ellipse at 20% 90%, rgba(56, 189, 248, 0.05) 0%, transparent 40%);
+        radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.4) 0%, transparent 60%);
 }
 
-/* 左上ラベル: ●WORK 形式（小さなLEDドット付き） */
+/* 上部メタ（左: ラベル / 右: セット数） */
+.clock-meta {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
 .clock-corner-label {
-    position: absolute;
-    top: clamp(12px, 1.8vw, 18px);
-    left: clamp(18px, 2.5vw, 26px);
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    color: var(--led-color);
-    font-family: "Share Tech Mono", "Courier New", "Menlo", "Consolas", monospace;
-    font-weight: 700;
-    font-size: clamp(0.85rem, 1.4vw, 1.05rem);
-    letter-spacing: 0.2em;
-    text-shadow:
-        0 0 6px var(--led-glow),
-        0 0 14px var(--led-glow);
-    z-index: 3;
+    font-family: "Orbitron", "LINE Seed JP", monospace;
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 0.22em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
 }
 .clock-corner-label .corner-dot {
     display: inline-block;
-    width: 9px; height: 9px;
+    width: 7px; height: 7px;
     border-radius: 50%;
-    background: var(--led-bright);
-    box-shadow:
-        0 0 6px var(--led-bright),
-        0 0 12px var(--led-glow);
-    animation: ledBlink 1s ease-in-out infinite;
+    background: var(--text-muted);
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+}
+body.state-work .clock-corner-label .corner-dot {
+    background: #6b7280;
+    animation: ledBlink 1.4s ease-in-out infinite;
+}
+body.state-break .clock-corner-label .corner-dot {
+    background: #f59e0b;
+    animation: ledBlink 1.4s ease-in-out infinite;
+}
+body.state-done .clock-corner-label .corner-dot {
+    background: #8b5cf6;
 }
 @keyframes ledBlink {
-    0%, 60% { opacity: 1; }
-    61%, 100% { opacity: 0.25; }
+    0%, 65% { opacity: 1; }
+    66%, 100% { opacity: 0.3; }
 }
 
-/* 右上の小さな7セグ風セット数表示 */
-.clock-mini-info {
-    position: absolute;
-    top: clamp(12px, 1.8vw, 18px);
-    right: clamp(18px, 2.5vw, 26px);
-    z-index: 3;
-}
 .mini-7seg {
-    font-family: "Share Tech Mono", "Courier New", monospace;
-    color: var(--led-color);
-    font-size: clamp(0.85rem, 1.4vw, 1.05rem);
+    font-family: "Orbitron", "LINE Seed JP", monospace;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
     letter-spacing: 0.18em;
     font-variant-numeric: tabular-nums;
-    text-shadow: 0 0 6px var(--led-glow), 0 0 12px var(--led-glow);
-    padding: 3px 8px;
-    border: 1px solid rgba(56, 189, 248, 0.4);
-    border-radius: 4px;
-    background: rgba(56, 189, 248, 0.05);
+    padding: 3px 9px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    background: var(--surface);
 }
 
-/* 左下のベル */
-.clock-bell {
-    position: absolute;
-    bottom: clamp(34px, 3.2vw, 44px);
-    left: clamp(18px, 2.5vw, 26px);
-    color: var(--led-color);
-    font-size: clamp(0.95rem, 1.6vw, 1.25rem);
-    opacity: 0.85;
-    filter: drop-shadow(0 0 6px var(--led-glow));
-    z-index: 3;
-    -webkit-text-fill-color: var(--led-color);
+/* ===== 中央メイン: 数字＋フェーズ説明 ===== */
+.clock-main {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8px 0 10px;
 }
 
-/* ===== 7セグ風 大型デジタル数字 ===== */
 .time-digits-wrap {
     position: relative;
     display: inline-block;
-    /* 右下マスコットと重ならないよう右パディング */
-    padding-right: clamp(70px, 16vw, 160px);
-    z-index: 2;
     line-height: 1;
 }
 
-/* ゴースト（消灯セグ）: 88:88 を超薄く描画 → "つけ忘れたセグメント"の演出 */
+/* ゴースト 88:88（うっすら下地） */
 .time-ghost {
     position: absolute;
-    top: 0; left: 0;
-    right: clamp(70px, 16vw, 160px);
+    top: 0; left: 0; right: 0;
     text-align: center;
-    font-family: "Orbitron", "Share Tech Mono", "Courier New", monospace;
-    font-size: clamp(4.4rem, 19vw, 10rem);
+    font-family: "Orbitron", "LINE Seed JP", monospace;
+    font-size: clamp(4rem, 16vw, 7.5rem);
     font-weight: 900;
-    color: rgba(56, 189, 248, 0.08);
-    letter-spacing: 0.05em;
+    color: rgba(31, 41, 55, 0.05);
+    letter-spacing: 0.04em;
     font-variant-numeric: tabular-nums;
     pointer-events: none;
     user-select: none;
@@ -262,20 +277,13 @@ body.state-done  { background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%)
     position: relative;
     display: inline-flex;
     align-items: baseline;
-    /* Orbitron = 角ばったSFデジタル感、フォールバックは Share Tech Mono */
-    font-family: "Orbitron", "Share Tech Mono", "Courier New", "Menlo", "Consolas", monospace;
-    font-size: clamp(4.4rem, 19vw, 10rem);
-    font-weight: 900;
-    color: var(--led-bright);
+    font-family: "Orbitron", "LINE Seed JP", monospace;
+    font-size: clamp(4rem, 16vw, 7.5rem);
+    font-weight: 700;
+    color: var(--text-primary);
     line-height: 1;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
     font-variant-numeric: tabular-nums;
-    text-shadow:
-        0 0 6px var(--led-bright),
-        0 0 14px var(--led-glow),
-        0 0 28px var(--led-glow),
-        0 0 56px rgba(56, 189, 248, 0.4);
-    /* ほんのり傾けて液晶の見え方を再現する...のは止めて真っ直ぐに */
     z-index: 2;
 }
 .time-digits .seg-mm,
@@ -284,8 +292,8 @@ body.state-done  { background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%)
 }
 .time-digits .seg-colon {
     display: inline-block;
-    padding: 0 0.05em;
-    /* コロンは少し小さく、点滅可能 */
+    padding: 0 0.04em;
+    color: var(--text-secondary);
     transition: opacity 0.2s;
 }
 .time-digits .seg-colon.blink {
@@ -293,114 +301,80 @@ body.state-done  { background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%)
 }
 @keyframes colonBlink {
     0%, 49%   { opacity: 1; }
-    50%, 100% { opacity: 0.15; }
+    50%, 100% { opacity: 0.2; }
 }
 
-/* 数字下のフェーズテキスト */
 .phase-text {
-    position: relative;
-    margin-top: 18px;
-    font-family: "Share Tech Mono", "Courier New", monospace;
-    font-size: clamp(0.9rem, 1.5vw, 1.1rem);
-    color: var(--led-color);
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-shadow: 0 0 6px var(--led-glow);
-    padding-right: clamp(70px, 16vw, 160px);
-    z-index: 2;
+    margin-top: 10px;
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    letter-spacing: 0.04em;
     text-align: center;
 }
 
-/* ===== 10セグメント風プログレスバー（液晶下部） ===== */
+/* ===== 下部のセグメントプログレス ===== */
+.clock-bottom {
+    position: relative;
+    z-index: 2;
+    margin-top: 14px;
+}
 .progress-segments {
-    position: absolute;
-    left: clamp(18px, 2.5vw, 26px);
-    right: clamp(18px, 2.5vw, 26px);
-    bottom: clamp(20px, 2.4vw, 28px);
     display: flex;
     gap: 3px;
-    height: 10px;
-    z-index: 3;
+    height: 6px;
+    width: 100%;
 }
 .progress-segments .pseg {
     flex: 1;
     background: var(--led-dim);
     border-radius: 2px;
-    transition: background 0.2s, box-shadow 0.2s;
+    transition: background 0.25s;
 }
 .progress-segments .pseg.on {
     background: var(--led-bright);
-    box-shadow:
-        0 0 6px var(--led-glow),
-        0 0 12px var(--led-glow);
 }
 
-/* 細い下部プログレスバー（補助） */
-.progress-bar {
-    position: absolute;
-    left: clamp(18px, 2.5vw, 26px);
-    right: clamp(18px, 2.5vw, 26px);
-    bottom: clamp(10px, 1.2vw, 14px);
-    height: 3px;
-    background: rgba(56, 189, 248, 0.1);
-    border-radius: 999px;
-    overflow: hidden;
-    z-index: 3;
-}
-.progress-bar-fg {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, var(--led-color), var(--led-bright));
-    box-shadow: 0 0 8px var(--led-glow);
-    border-radius: 999px;
-    transition: width 0.4s ease, background 0.4s ease;
-}
-
-/* ===== 状態別のLED色 ===== */
-body.state-idle .clock-screen,
-body.state-work .clock-screen {
-    --led-color: #38bdf8;
-    --led-bright: #7dd3fc;
-    --led-dim: rgba(56, 189, 248, 0.10);
-    --led-glow: rgba(56, 189, 248, 0.85);
-}
+/* 状態別: ブレイクとDONEはアクセント色のみ薄く適用 */
 body.state-break .clock-screen {
-    --led-color: #f59e0b;
-    --led-bright: #fde68a;
-    --led-dim: rgba(245, 158, 11, 0.12);
-    --led-glow: rgba(245, 158, 11, 0.85);
+    --led-bright: #ea580c;
+    --led-dim: rgba(234, 88, 12, 0.12);
 }
 body.state-done .clock-screen {
-    --led-color: #c084fc;
-    --led-bright: #f0abfc;
-    --led-dim: rgba(192, 132, 252, 0.12);
-    --led-glow: rgba(192, 132, 252, 0.85);
+    --led-bright: #7c3aed;
+    --led-dim: rgba(124, 58, 237, 0.12);
+}
+body.state-break .time-digits .seg-colon { color: #ea580c; }
+body.state-done .time-digits .seg-colon { color: #7c3aed; }
+
+/* 警告アニメ（残り10秒以下） */
+@keyframes pulseDigits {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
+}
+.time-digits.warning {
+    color: var(--danger) !important;
+    animation: pulseDigits 1s ease-in-out infinite;
 }
 
 /* ============================================================
-   ★ 右下にちょこんと座るマスコット
+   マスコットステージ（時計の外、下に独立配置）
    ============================================================ */
-
-.mascot-corner {
-    position: absolute;
-    /* 液晶パネルの外側、右下からはみ出る形で座る */
-    right: clamp(-6px, -0.5vw, 0px);
-    bottom: clamp(-12px, -1.2vw, -8px);
-    width: clamp(110px, 22vw, 200px);
-    height: clamp(110px, 22vw, 200px);
-    z-index: 5;
-    pointer-events: auto;
-}
-
-.canvas-container {
+.mascot-stage {
     position: relative;
     width: 100%;
-    height: 100%;
+    display: flex;
+    justify-content: center;
+}
+.canvas-container {
+    position: relative;
+    width: clamp(160px, 38vw, 220px);
+    height: clamp(160px, 38vw, 220px);
     border-radius: 50%;
     overflow: hidden;
-    /* 影で「机に座っている」感じを出す */
-    filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.25));
-    background: transparent;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
     cursor: grab;
 }
 .canvas-container canvas {
@@ -416,15 +390,14 @@ body.state-done .clock-screen {
     display: none;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.7);
     pointer-events: none;
 }
 .loading-overlay.visible { display: flex; }
 .spinner {
-    width: 30px;
-    height: 30px;
-    border: 4px solid #cbd5e1;
-    border-top-color: #2563eb;
+    width: 28px; height: 28px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
@@ -437,83 +410,89 @@ body.state-done .clock-screen {
     display: none;
     align-items: center;
     justify-content: center;
-    background: rgba(37, 99, 235, 0.75);
+    background: rgba(31, 41, 55, 0.85);
     color: #fff;
-    font-weight: 700;
+    font-weight: 600;
     font-size: 0.85rem;
     text-align: center;
-    line-height: 1.3;
+    line-height: 1.4;
     border-radius: 50%;
     pointer-events: none;
     z-index: 10;
 }
 .canvas-container.dragover .drop-overlay { display: flex; }
 
-/* ---------- 操作ボタン ---------- */
+/* ============================================================
+   操作ボタン（迷わないようサイズ・コントラスト最大化）
+   ============================================================ */
 .control-buttons {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 2fr 1fr 1fr;
     gap: 10px;
+    margin-top: 18px;
 }
 .btn {
     border: none;
-    padding: 14px 12px;
-    border-radius: 12px;
-    font-size: 1rem;
-    font-weight: 700;
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    font-size: 0.98rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: transform 0.1s, box-shadow 0.2s, background 0.2s, opacity 0.2s;
+    transition: transform 0.08s, box-shadow 0.18s, background 0.18s, opacity 0.2s, border-color 0.18s;
     font-family: inherit;
     min-height: 52px;
+    letter-spacing: 0.02em;
 }
-.btn:active:not(:disabled) { transform: scale(0.97); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:active:not(:disabled) { transform: scale(0.98); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .btn-primary {
-    background: #2563eb; color: #fff;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    background: var(--accent);
+    color: #fff;
+    box-shadow: var(--shadow-sm);
 }
-.btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); box-shadow: var(--shadow-md); }
 
 .btn-secondary {
-    background: #f59e0b; color: #fff;
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-strong);
 }
-.btn-secondary:hover:not(:disabled) { background: #d97706; }
+.btn-secondary:hover:not(:disabled) { background: var(--surface-2); border-color: var(--text-muted); }
 
 .btn-ghost {
-    background: #f1f5f9; color: #1f2937;
-    border: 1px solid #cbd5e1;
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
 }
-.btn-ghost:hover:not(:disabled) { background: #e2e8f0; }
+.btn-ghost:hover:not(:disabled) { background: var(--surface-2); }
 
 .btn-small {
     padding: 8px 12px;
-    font-size: 0.85rem;
+    font-size: 0.84rem;
     min-height: 36px;
+    font-weight: 500;
 }
 
 /* ============================================================
    設定エリア
    ============================================================ */
-
 .settings-section {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
-
 .settings {
-    background: rgba(255, 255, 255, 0.88);
-    border-radius: 16px;
-    padding: 16px 20px;
-    border: 1px solid rgba(226, 232, 240, 0.8);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
-    color: #1f2937;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
 }
 .settings h3 {
-    font-size: 1rem;
-    color: #1e293b;
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: var(--text-primary);
     display: inline-block;
 }
 .settings-header {
@@ -536,8 +515,8 @@ body.state-done .clock-screen {
     content: "▶";
     display: inline-block;
     margin-right: 8px;
-    font-size: 0.7rem;
-    color: #64748b;
+    font-size: 0.65rem;
+    color: var(--text-muted);
     transition: transform 0.2s;
 }
 .collapsible[open] summary::before { transform: rotate(90deg); }
@@ -546,28 +525,31 @@ body.state-done .clock-screen {
 /* モードタブ */
 .mode-tabs {
     display: inline-flex;
-    background: #e2e8f0;
-    border-radius: 10px;
+    background: var(--surface-2);
+    border-radius: var(--radius-md);
     padding: 3px;
     gap: 2px;
+    border: 1px solid var(--border);
 }
 .mode-tab {
     border: none;
     background: transparent;
     padding: 6px 14px;
     border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 0.84rem;
+    font-weight: 500;
     cursor: pointer;
-    color: #475569;
+    color: var(--text-secondary);
     font-family: inherit;
-    transition: background 0.2s, color 0.2s;
+    transition: background 0.18s, color 0.18s;
 }
 .mode-tab.active {
-    background: #fff;
-    color: #1e40af;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    background: var(--surface);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+    font-weight: 600;
 }
+
 .mode-pane { display: none; }
 .mode-pane.active { display: block; }
 
@@ -577,31 +559,32 @@ body.state-done .clock-screen {
     justify-content: space-between;
     align-items: center;
     padding: 8px 0;
-    border-bottom: 1px dashed #e2e8f0;
+    border-bottom: 1px dashed var(--border);
     gap: 12px;
 }
 .setting-row:last-child { border-bottom: none; }
 .setting-row label {
-    font-weight: 600;
-    color: #334155;
-    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.92rem;
 }
 .setting-row input[type="number"],
 .setting-row input[type="time"],
 .setting-row select {
     width: 130px;
     padding: 8px 10px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--border-strong);
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-family: inherit;
-    background: #fff;
+    background: var(--surface);
+    color: var(--text-primary);
     text-align: right;
 }
-.setting-row input[type="range"] { flex: 1; max-width: 180px; }
+.setting-row input[type="range"] { flex: 1; max-width: 180px; accent-color: var(--accent); }
 .setting-row input:focus,
 .setting-row select:focus {
-    outline: 2px solid #2563eb;
+    outline: 2px solid var(--accent);
     outline-offset: 1px;
 }
 
@@ -617,48 +600,48 @@ body.state-done .clock-screen {
     grid-template-columns: auto 1fr auto 1fr auto;
     align-items: center;
     gap: 6px;
-    background: #fff;
-    border: 1px solid #e2e8f0;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 8px 10px;
     transition: opacity 0.2s;
 }
 .schedule-row.skipped {
     opacity: 0.5;
-    background: #f1f5f9;
+    background: var(--surface-2);
 }
 .schedule-row.skipped::after {
     content: " (経過済)";
-    font-size: 0.75rem;
-    color: #ef4444;
+    font-size: 0.72rem;
+    color: var(--danger);
     grid-column: 1 / -1;
     text-align: right;
     margin-top: -2px;
 }
 .schedule-row .row-num {
-    font-weight: 800;
-    color: #2563eb;
-    font-size: 0.9rem;
-    width: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    width: 26px;
     text-align: center;
 }
 .schedule-row input[type="time"] {
     width: 100%;
     min-width: 0;
     padding: 6px 8px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     font-family: inherit;
-    background: #fff;
+    background: var(--surface);
     text-align: center;
 }
-.schedule-row .row-tilde { color: #94a3b8; font-weight: 700; }
+.schedule-row .row-tilde { color: var(--text-muted); font-weight: 700; }
 .schedule-row .row-remove {
     background: transparent;
     border: none;
-    color: #ef4444;
-    font-size: 1.2rem;
+    color: var(--danger);
+    font-size: 1.15rem;
     cursor: pointer;
     padding: 4px 6px;
     border-radius: 6px;
@@ -678,59 +661,62 @@ body.state-done .clock-screen {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #2563eb;
+    background: var(--accent);
     color: #fff;
-    padding: 10px 16px;
-    border-radius: 10px;
+    padding: 9px 16px;
+    border-radius: var(--radius-md);
     cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: background 0.2s, transform 0.1s;
+    font-weight: 500;
+    font-size: 0.88rem;
+    transition: background 0.2s, transform 0.08s;
     user-select: none;
 }
-.file-label:hover { background: #1d4ed8; }
+.file-label:hover { background: var(--accent-hover); }
 .file-label:active { transform: scale(0.97); }
 
 .hint {
     margin-top: 10px;
-    font-size: 0.8rem;
-    color: #6b7280;
-    line-height: 1.5;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
 }
 .hint code {
-    background: #f1f5f9;
+    background: var(--surface-2);
     padding: 1px 6px;
     border-radius: 4px;
-    font-size: 0.85em;
-    color: #1e40af;
+    font-size: 0.9em;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
 }
 
 /* セリフ編集 */
 .subsection-title {
     margin-top: 14px;
-    font-size: 0.95rem;
-    color: #1e293b;
+    font-size: 0.92rem;
+    color: var(--text-primary);
+    font-weight: 600;
 }
 .script-editor { display: flex; flex-direction: column; gap: 4px; }
 .script-editor label {
     margin-top: 8px;
-    font-weight: 600;
-    color: #334155;
-    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.82rem;
 }
 .script-editor textarea {
     width: 100%;
     padding: 8px 10px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--border-strong);
     border-radius: 8px;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     font-family: inherit;
-    background: #fff;
+    background: var(--surface);
+    color: var(--text-primary);
     resize: vertical;
-    line-height: 1.5;
+    line-height: 1.6;
 }
 .script-editor textarea:focus {
-    outline: 2px solid #2563eb;
+    outline: 2px solid var(--accent);
     outline-offset: 1px;
 }
 .script-editor-actions {
@@ -744,54 +730,32 @@ body.state-done .clock-screen {
 .switch {
     position: relative;
     display: inline-block;
-    width: 52px;
-    height: 28px;
+    width: 48px;
+    height: 26px;
 }
 .switch input { opacity: 0; width: 0; height: 0; }
 .slider {
     position: absolute;
     cursor: pointer;
     inset: 0;
-    background: #cbd5e1;
+    background: var(--border-strong);
     border-radius: 999px;
-    transition: 0.3s;
+    transition: 0.25s;
 }
 .slider::before {
     content: "";
     position: absolute;
-    width: 22px; height: 22px;
+    width: 20px; height: 20px;
     left: 3px; top: 3px;
     background: #fff;
     border-radius: 50%;
-    transition: 0.3s;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: 0.25s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
-.switch input:checked + .slider { background: #2563eb; }
-.switch input:checked + .slider::before { transform: translateX(24px); }
+.switch input:checked + .slider { background: var(--accent); }
+.switch input:checked + .slider::before { transform: translateX(22px); }
 
-/* フッター */
-.footer {
-    text-align: center;
-    margin-top: 12px;
-    opacity: 0.7;
-    font-size: 0.8rem;
-}
-
-/* 警告アニメ（残り10秒以下で点滅風） */
-@keyframes pulseDigits {
-    0%, 100% { opacity: 1; }
-    50%      { opacity: 0.55; }
-}
-.time-digits.warning {
-    color: #fca5a5 !important;
-    text-shadow:
-        0 0 10px rgba(252, 165, 165, 1),
-        0 0 22px rgba(220, 38, 38, 0.85),
-        0 0 44px rgba(220, 38, 38, 0.55) !important;
-    animation: pulseDigits 1s ease-in-out infinite;
-}
-
-/* 向きプリセットボタンのレイアウト */
+/* 向きプリセット */
 .orient-presets {
     display: inline-flex;
     flex-wrap: wrap;
@@ -804,29 +768,26 @@ body.state-done .clock-screen {
     min-height: 32px;
 }
 
+/* フッター */
+.footer {
+    text-align: center;
+    margin-top: 12px;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
 /* ---------- 小画面 ---------- */
 @media (max-width: 600px) {
-    .control-buttons { grid-template-columns: 1fr; }
-    .clock-screen {
-        padding: 32px 16px 56px;
-        min-height: 220px;
-    }
+    .control-buttons { grid-template-columns: 1fr 1fr; }
+    .control-buttons .btn-primary { grid-column: 1 / -1; }
+    .clock-screen { padding: 14px 16px 18px; }
     .time-digits,
     .time-ghost {
-        font-size: clamp(3.4rem, 17vw, 5.6rem);
+        font-size: clamp(3.4rem, 18vw, 5.6rem);
     }
-    .time-digits-wrap,
-    .phase-text {
-        padding-right: clamp(56px, 24vw, 120px);
-    }
-    .time-ghost {
-        right: clamp(56px, 24vw, 120px);
-    }
-    .mascot-corner {
-        width: clamp(96px, 28vw, 140px);
-        height: clamp(96px, 28vw, 140px);
-        right: -4px;
-        bottom: -8px;
+    .canvas-container {
+        width: clamp(140px, 44vw, 180px);
+        height: clamp(140px, 44vw, 180px);
     }
     .setting-row input[type="number"],
     .setting-row input[type="time"],
