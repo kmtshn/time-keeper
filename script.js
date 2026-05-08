@@ -365,10 +365,11 @@ function animate() {
     const delta = clock.getDelta();
     if (mixer) mixer.update(delta);
     if (currentModel) {
-        currentModel.rotation.y += delta * 0.5;
+        // ★ 自動回転は停止（ユーザー要望）。回転を再開したい場合は次行のコメントを外す
+        // currentModel.rotation.y += delta * 0.5;
         if (breatheBaseY === null) breatheBaseY = currentModel.position.y;
         const t = clock.elapsedTime;
-        // 振幅は外接半径に応じてごく小さく（はみ出し防止）
+        // 振幅は外接半径に応じてごく小さく（はみ出し防止）。呼吸アニメは継続
         const amp = Math.min(0.04, modelBoundingRadius * 0.02);
         currentModel.position.y = breatheBaseY + Math.sin(t * 2) * amp;
     }
