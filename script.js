@@ -1,13 +1,16 @@
 /* =========================================================
-   封入封緘タイムキーパー  メインスクリプト（Vanilla JS + Three.js）
+   タイムキーパー  メインスクリプト（Vanilla JS + Three.js）
    - 3D キャラクター表示（Three.js + GLTFLoader）
      * 起動時は assets/character.glb を自動ロード
      * ファイル選択 / D&D で差し替え可能
+     * デフォルトの向きは右に90°回転
    - タイマー
      * モード1: 時間指定（作業X分・休憩Y分・Nセット）
      * モード2: 時刻指定（08:30-09:50, 10:00-10:50 ... 等を任意行追加）
+     * 数字は桁ごとに固定幅（時計のように桁ブレなし）
    - Web Speech API
-     * 音声モデル選択 / 話速・音高調整 / 試し再生
+     * 音声モデル選択（デフォルトは Microsoft Nanami / 七海 Online を優先）
+     * 話速・音高調整 / 試し再生
      * セリフは UI から編集可能（プレースホルダ {set}/{total}/{remain}/{end} 対応）
    - 設定は localStorage に永続化
    ========================================================= */
@@ -19,15 +22,14 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
    0. 定数 / 既定値
    ========================================================= */
 
-const DEFAULT_GLB_URL = 'assets/character.glb'; // リポジトリ同梱のデフォルト
+const DEFAULT_GLB_URL = 'assets/character.glb';
 
-/** セリフの初期値（プレースホルダ対応）*/
 const DEFAULT_SCRIPTS = {
     workStart:      'セット{set}、作業を開始します。終了予定は{end}。集中していこう！',
     breakStart:     'セット{set}、お疲れ様！ここで一息つきましょう。',
     allDone:        'すべての作業が完了しました。本当にお疲れ様でした！',
     encourageHalf:  '折り返し地点だよ。あと{remain}分、ペースを保っていこう！',
-    encourageFive: 'あと5分！ラストスパート、がんばろう！',
+    encourageFive:  'あと5分！ラストスパート、がんばろう！',
 };
 
 const STORAGE_KEY = 'envelope-timekeeper:v2';
@@ -36,38 +38,34 @@ const STORAGE_KEY = 'envelope-timekeeper:v2';
    1. 設定の読み込み・保存
    ========================================================= */
 
-/** 既定の設定オブジェクト */
 function defaultSettings() {
     return {
-        mode: 'duration', // 'duration' | 'schedule'
+        mode: 'duration',
         workMinutes: 25,
         breakMinutes: 5,
         totalSets: 3,
-        // schedule: [{start:'08:30', end:'09:50'}, ...] （break は次行 start との差で算出）
         schedule: [
             { start: '08:30', end: '09:50' },
             { start: '10:00', end: '10:50' },
             { start: '11:00', end: '11:50' },
         ],
         encourage: true,
-        voiceName: '',         // 選択された音声名（保存・復元用）
+        voiceName: '',
         voiceLang: '',
         voiceRate: 1.0,
         voicePitch: 1.05,
         scripts: { ...DEFAULT_SCRIPTS },
-        // ★ マスコットの向き（度）。yaw=Y軸回転（左右）、pitch=X軸回転（上下うなずき）
-        mascotYawDeg: 0,
+        // ★ マスコットの向き: デフォルトは右に90°
+        mascotYawDeg: 90,
         mascotPitchDeg: 0,
     };
 }
 
-/** localStorage から設定を読み込み（壊れていたら既定値）*/
 function loadSettings() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return defaultSettings();
         const parsed = JSON.parse(raw);
-        // 旧バージョン互換のため既定値とマージ
         const merged = { ...defaultSettings(), ...parsed };
         merged.scripts = { ...DEFAULT_SCRIPTS, ...(parsed.scripts || {}) };
         if (!Array.isArray(merged.schedule) || merged.schedule.length === 0) {
@@ -103,13 +101,11 @@ const loadingOverlay  = document.getElementById('loading-overlay');
 const scene = new THREE.Scene();
 scene.background = null;
 
-// カメラ: モデル毎に距離・注視点を動的に算出するので、ここの値は仮置き
 const CAMERA_FOV = 35;
 const camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1, 0.1, 1000);
 camera.position.set(0, 1.2, 5);
 camera.lookAt(0, 0.9, 0);
 
-// モデルの外接情報（fitCameraToModel で更新）。リサイズ時の再フィットに使用
 const cameraTarget = new THREE.Vector3(0, 0.9, 0);
 let modelBoundingRadius = 1.2;
 
@@ -118,7 +114,6 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 canvasContainer.appendChild(renderer.domElement);
 
-// ライティング
 scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
 dirLight.position.set(3, 5, 4);
@@ -127,7 +122,6 @@ const fillLight = new THREE.DirectionalLight(0xfff3c4, 0.4);
 fillLight.position.set(-3, 2, -2);
 scene.add(fillLight);
 
-// 影風プレート
 const shadowMesh = new THREE.Mesh(
     new THREE.CircleGeometry(0.9, 32),
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.15 })
@@ -138,10 +132,9 @@ scene.add(shadowMesh);
 
 let currentModel = null;
 let mixer = null;
-let breatheBaseY = null; // 呼吸アニメ用の基準Y（モデル切替で null にリセット）
+let breatheBaseY = null;
 const clock = new THREE.Clock();
 
-/** プレースホルダー（GLB読み込み失敗時のフォールバック） */
 function createPlaceholder() {
     const group = new THREE.Group();
     const body = new THREE.Mesh(
@@ -196,103 +189,78 @@ function clearCurrentModel() {
         currentModel = null;
     }
     mixer = null;
-    breatheBaseY = null; // 次のモデルで基準Yを再キャプチャするためリセット
+    breatheBaseY = null;
 }
 
-/**
- * モデルをシーンに配置（自動正規化＋カメラ自動フィット）
- *  - モデルの外接球を基準に、Y軸回転中も画面内に収まるカメラ距離を計算
- *  - 縦長/横長/奥行きのあるモデル、ビュー縦横比に応じて自動調整
- */
 function placeModel(model) {
-    // 1) いったんワールド原点に置いてから外接箱を取る
     model.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
 
-    // 2) 高さ約2.0unit に正規化（小さすぎ/大きすぎ対策）
     const desired = 2.0;
     const maxDim = Math.max(size.x, size.y, size.z) || 1;
     const scale = desired / maxDim;
     model.scale.setScalar(scale);
 
-    // 3) X/Z は中心を原点に、Y は床(=0) に乗るように
     model.position.x = -center.x * scale;
     model.position.z = -center.z * scale;
     model.position.y = -box.min.y * scale;
 
-    // 3.5) ★ ユーザー設定の向き（yaw/pitch）を適用
+    // ユーザー設定の向き（yaw/pitch）を適用
     model.rotation.y = THREE.MathUtils.degToRad(settings.mascotYawDeg || 0);
     model.rotation.x = THREE.MathUtils.degToRad(settings.mascotPitchDeg || 0);
 
     scene.add(model);
     currentModel = model;
 
-    // 4) スケール適用後の外接情報を再計算（カメラフィット用）
     model.updateMatrixWorld(true);
     const fittedBox = new THREE.Box3().setFromObject(model);
     const fittedSize = fittedBox.getSize(new THREE.Vector3());
     const fittedCenter = fittedBox.getCenter(new THREE.Vector3());
 
-    // Y軸まわりに回転するため、XZ平面上で最も遠い点までの距離（半径）
-    // をその回転半径として採用。Yはそのまま使う。これに少し余裕(マージン)を足す
     const halfX = fittedSize.x / 2;
     const halfZ = fittedSize.z / 2;
     const halfY = fittedSize.y / 2;
-    const radiusXZ = Math.hypot(halfX, halfZ); // Y軸回転で外側に出る最大半径
-    // 外接球的な半径（縦・横どちらにも余白を確保するため Y も含める）
+    const radiusXZ = Math.hypot(halfX, halfZ);
     const sphereRadius = Math.max(radiusXZ, halfY);
     modelBoundingRadius = sphereRadius;
 
-    // 注視点はモデル中心
     cameraTarget.set(fittedCenter.x, fittedCenter.y, fittedCenter.z);
 
-    // 影プレートをモデル下端に追従（はみ出した小さなモデルでも違和感を減らす）
     shadowMesh.scale.setScalar(Math.max(0.6, radiusXZ * 1.1));
     shadowMesh.position.y = fittedBox.min.y + 0.001;
 
-    // 5) カメラ位置をフィット
     fitCameraToModel();
 }
 
-/**
- * 現在のキャンバスサイズと modelBoundingRadius からカメラ距離を計算し、
- * モデルが必ずビュー内に収まるようカメラ位置・near/far を調整する。
- */
 function fitCameraToModel() {
     const rect = canvasContainer.getBoundingClientRect();
     const aspect = Math.max(0.1, rect.width / Math.max(1, rect.height));
 
-    // 縦方向の半画角(rad)、横方向の半画角(rad)
     const vFov = THREE.MathUtils.degToRad(camera.fov);
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
 
-    // 球が両方向ともビューに収まるための距離。狭い方を基準にとる
     const r = modelBoundingRadius;
     const distV = r / Math.sin(vFov / 2);
     const distH = r / Math.sin(hFov / 2);
     let dist = Math.max(distV, distH);
 
-    // 視覚的な余白（10%）と最小距離（近すぎ防止）
     dist *= 1.10;
     dist = Math.max(dist, r * 1.5);
 
-    // カメラはモデル中心の少し上から、Z+ 方向に dist 離れた位置に
     camera.position.set(
         cameraTarget.x,
-        cameraTarget.y + r * 0.15, // ほんの少し上から見下ろす
+        cameraTarget.y + r * 0.15,
         cameraTarget.z + dist
     );
     camera.lookAt(cameraTarget);
 
-    // near/far も適切に
     camera.near = Math.max(0.01, dist - r * 4);
     camera.far  = dist + r * 6 + 10;
     camera.updateProjectionMatrix();
 }
 
-/** GLB の ArrayBuffer / URL からロード */
 function loadGLB(input) {
     const loader = new GLTFLoader();
     showLoading(true);
@@ -323,6 +291,9 @@ function loadGLB(input) {
 function showPlaceholder() {
     clearCurrentModel();
     currentModel = createPlaceholder();
+    // プレースホルダーにも向きを反映
+    currentModel.rotation.y = THREE.MathUtils.degToRad(settings.mascotYawDeg || 0);
+    currentModel.rotation.x = THREE.MathUtils.degToRad(settings.mascotPitchDeg || 0);
     scene.add(currentModel);
 }
 
@@ -330,10 +301,8 @@ function showLoading(visible) {
     loadingOverlay.classList.toggle('visible', visible);
 }
 
-/** デフォルトGLB（リポジトリ同梱）を読み込む。失敗時はプレースホルダー */
 function loadDefaultModel() {
     showLoading(true);
-    // HEAD で存在確認 → 無ければプレースホルダー
     fetch(DEFAULT_GLB_URL, { method: 'HEAD' })
         .then((res) => {
             if (res.ok) {
@@ -349,10 +318,8 @@ function loadDefaultModel() {
         });
 }
 
-// 初期化
 loadDefaultModel();
 
-// リサイズ: キャンバスサイズに合わせてレンダラ・カメラを更新し、再フィット
 function resizeRenderer() {
     const rect = canvasContainer.getBoundingClientRect();
     const w = Math.max(1, Math.floor(rect.width));
@@ -360,23 +327,18 @@ function resizeRenderer() {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    // モデルが配置済みなら、縦横比に応じてカメラ距離を再計算
     fitCameraToModel();
 }
 new ResizeObserver(resizeRenderer).observe(canvasContainer);
 resizeRenderer();
 
-// 描画ループ（呼吸アニメは「基準Y + sin」で実装してドリフトを防ぐ）
 function animate() {
     requestAnimationFrame(animate);
     const delta = clock.getDelta();
     if (mixer) mixer.update(delta);
     if (currentModel) {
-        // ★ 自動回転は停止（ユーザー要望）。回転を再開したい場合は次行のコメントを外す
-        // currentModel.rotation.y += delta * 0.5;
         if (breatheBaseY === null) breatheBaseY = currentModel.position.y;
         const t = clock.elapsedTime;
-        // 振幅は外接半径に応じてごく小さく（はみ出し防止）。呼吸アニメは継続
         const amp = Math.min(0.04, modelBoundingRadius * 0.02);
         currentModel.position.y = breatheBaseY + Math.sin(t * 2) * amp;
     }
@@ -384,7 +346,6 @@ function animate() {
 }
 animate();
 
-// ファイル入力
 fileInput.addEventListener('change', (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -405,7 +366,6 @@ const mascotPitchVal   = document.getElementById('mascot-pitch-val');
 const mascotOrientReset = document.getElementById('mascot-orient-reset');
 const orientPresets    = document.querySelectorAll('.orient-preset');
 
-/** 設定値からスライダーUIへ反映 */
 function syncOrientationUI() {
     if (mascotYawInput)   mascotYawInput.value   = settings.mascotYawDeg;
     if (mascotPitchInput) mascotPitchInput.value = settings.mascotPitchDeg;
@@ -413,7 +373,6 @@ function syncOrientationUI() {
     if (mascotPitchVal)   mascotPitchVal.textContent = `${settings.mascotPitchDeg}°`;
 }
 
-/** 現在のモデルに向きをリアルタイム反映 */
 function applyOrientationToModel() {
     if (!currentModel) return;
     currentModel.rotation.y = THREE.MathUtils.degToRad(settings.mascotYawDeg || 0);
@@ -438,7 +397,8 @@ if (mascotPitchInput) {
 }
 if (mascotOrientReset) {
     mascotOrientReset.addEventListener('click', () => {
-        settings.mascotYawDeg = 0;
+        // リセット時もデフォルトの右90°に戻す
+        settings.mascotYawDeg = 90;
         settings.mascotPitchDeg = 0;
         syncOrientationUI();
         applyOrientationToModel();
@@ -455,7 +415,6 @@ orientPresets.forEach(btn => {
     });
 });
 
-// 起動時：保存済みの値をUIへ反映
 syncOrientationUI();
 
 // D&D
@@ -502,7 +461,6 @@ const stopBtn       = document.getElementById('voice-stop-btn');
 function loadVoices() {
     if (!synth) return;
     availableVoices = synth.getVoices();
-    // 日本語優先
     availableVoices.sort((a, b) => {
         const aJa = /ja/i.test(a.lang) ? 0 : 1;
         const bJa = /ja/i.test(b.lang) ? 0 : 1;
@@ -526,17 +484,25 @@ function loadVoices() {
         voiceSelect.appendChild(opt);
     });
 
-    // 保存済みの音声を復元、なければ日本語、最後の砦は先頭
+    // ★ 優先順位: 保存済み > Microsoft Nanami(七海) > その他日本語 > 先頭
     let restored = null;
     if (settings.voiceName) {
         restored = availableVoices.find(v => v.name === settings.voiceName && v.lang === settings.voiceLang)
                 || availableVoices.find(v => v.name === settings.voiceName);
     }
+    const nanami = availableVoices.find(v => /nanami|七海/i.test(v.name));
     preferredVoice = restored
+                  || nanami
                   || availableVoices.find(v => /ja/i.test(v.lang))
                   || availableVoices[0];
     if (preferredVoice) {
         voiceSelect.value = String(availableVoices.indexOf(preferredVoice));
+        // 初回（settings.voiceName が空）の場合は選択した音声を保存
+        if (!settings.voiceName) {
+            settings.voiceName = preferredVoice.name;
+            settings.voiceLang = preferredVoice.lang;
+            saveSettings();
+        }
     }
 }
 
@@ -566,7 +532,6 @@ voicePitch.addEventListener('input', () => {
     saveSettings();
 });
 
-/** 文章を読み上げる */
 function speak(text) {
     if (!synth || !text) return;
     try {
@@ -590,7 +555,6 @@ stopBtn.addEventListener('click', () => {
     if (synth) synth.cancel();
 });
 
-/** {set}/{total}/{remain}/{end} を埋め込む */
 function fillTemplate(tpl, ctx) {
     return (tpl || '')
         .replaceAll('{set}',    String(ctx.set ?? ''))
@@ -634,7 +598,7 @@ scriptResetBtn.addEventListener('click', () => {
 
 
 /* =========================================================
-   5. タイマー本体（時間指定 / 時刻指定 両対応）
+   5. タイマー本体
    ========================================================= */
 
 const startBtn        = document.getElementById('start-btn');
@@ -658,7 +622,6 @@ const clockCornerLabel = document.getElementById('clock-corner-label');
 const clockCornerText  = document.getElementById('clock-corner-text');
 const clockMiniSet     = document.getElementById('clock-mini-set');
 
-// 10セグメント風プログレスバーを生成（20個 = 5%刻み）
 const PROGRESS_SEG_COUNT = 20;
 if (progressSegments) {
     for (let i = 0; i < PROGRESS_SEG_COUNT; i++) {
@@ -678,20 +641,18 @@ const scheduleList    = document.getElementById('schedule-list');
 const addScheduleBtn  = document.getElementById('add-schedule-btn');
 const presetScheduleBtn = document.getElementById('preset-schedule-btn');
 
-// 進捗バー（横長バー）用：パーセントで幅を制御するので円周計算は不要
-
 const STATE = Object.freeze({ IDLE: 'idle', WORK: 'work', BREAK: 'break', DONE: 'done' });
 
 const timerState = {
     phase: STATE.IDLE,
     isRunning: false,
-    plan: [],          // 実行プラン: [{type:'work'|'break', sec:Number, setNo:Number?, endHHMM:String?}]
+    plan: [],
     planIndex: 0,
     currentSet: 0,
     totalSets: 0,
     remainingSec: 0,
     phaseTotalSec: 0,
-    phaseEndHHMM: '',  // 現フェーズの終了時刻表示用
+    phaseEndHHMM: '',
     encouragedHalf: false,
     encouragedFive: false,
     intervalId: null,
@@ -706,10 +667,8 @@ function formatTime(totalSec) {
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 
-/** Date を HH:MM 文字列に */
 function toHHMM(d) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
 
-/** "HH:MM" を本日の Date に変換（過去なら翌日扱いはしない、null許容）*/
 function parseHHMMToDate(hhmm, base = new Date()) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm || '');
     if (!m) return null;
@@ -733,7 +692,7 @@ modeTabs.forEach(btn => {
             return;
         }
         setMode(btn.dataset.mode);
-        renderScheduleSkippedFlags(); // 経過済表示更新
+        renderScheduleSkippedFlags();
     });
 });
 
@@ -749,9 +708,8 @@ function bindDurationInputs() {
     [workInput, breakInput, setsInput].forEach(el => el.addEventListener('change', sync));
 }
 
-/* ---------- schedule モード（行管理） ---------- */
+/* ---------- schedule モード ---------- */
 
-/** スケジュールリストの再描画 */
 function renderScheduleList() {
     scheduleList.innerHTML = '';
     settings.schedule.forEach((row, idx) => {
@@ -765,7 +723,6 @@ function renderScheduleList() {
             <input type="time" class="row-end" value="${row.end || ''}">
             <button class="row-remove" title="この行を削除" aria-label="削除">×</button>
         `;
-        // 入力変更
         div.querySelector('.row-start').addEventListener('change', (e) => {
             settings.schedule[idx].start = e.target.value;
             saveSettings();
@@ -776,7 +733,6 @@ function renderScheduleList() {
             saveSettings();
             renderScheduleSkippedFlags();
         });
-        // 削除
         div.querySelector('.row-remove').addEventListener('click', () => {
             if (settings.schedule.length <= 1) {
                 alert('最低 1 行は必要です。');
@@ -791,7 +747,6 @@ function renderScheduleList() {
     renderScheduleSkippedFlags();
 }
 
-/** 既に過ぎた行に skipped クラスを付与（視覚的表示） */
 function renderScheduleSkippedFlags() {
     const now = new Date();
     [...scheduleList.children].forEach((div, idx) => {
@@ -802,7 +757,6 @@ function renderScheduleSkippedFlags() {
 }
 
 addScheduleBtn.addEventListener('click', () => {
-    // 直前の行の終了時刻 +10分 を新規 start にする提案
     const last = settings.schedule[settings.schedule.length - 1];
     let nextStart = '13:00', nextEnd = '13:50';
     if (last && last.end) {
@@ -833,7 +787,6 @@ presetScheduleBtn.addEventListener('click', () => {
 
 /* ---------- プラン構築 ---------- */
 
-/** duration モード から実行プランを作る */
 function buildPlanFromDuration() {
     const plan = [];
     const total = settings.totalSets;
@@ -846,10 +799,8 @@ function buildPlanFromDuration() {
     return plan;
 }
 
-/** schedule モード から実行プランを作る（現在時刻以降のセットのみ） */
 function buildPlanFromSchedule() {
     const now = new Date();
-    // バリデーション + 経過済除外 + 並び替え
     const valid = settings.schedule
         .map((r, i) => {
             const s = parseHHMMToDate(r.start, now);
@@ -864,7 +815,6 @@ function buildPlanFromSchedule() {
         return null;
     }
 
-    // 経過済（現在時刻 >= end）はスキップ
     const upcoming = valid.filter(x => x.end > now);
     if (upcoming.length === 0) {
         alert('すべてのセットの終了時刻が経過しています。スケジュールを更新してください。');
@@ -873,8 +823,6 @@ function buildPlanFromSchedule() {
 
     const plan = [];
     upcoming.forEach((entry, i) => {
-        // 1セット目で開始がまだ先 → そのまま開始まで待つのは複雑なので、
-        // 「今すぐ作業開始 〜 entry.end」とする
         const startAt = new Date(Math.max(now.getTime(), entry.start.getTime()));
         const sec = Math.max(1, Math.round((entry.end - startAt) / 1000));
         plan.push({
@@ -883,7 +831,6 @@ function buildPlanFromSchedule() {
             setNo: i + 1,
             endHHMM: toHHMM(entry.end),
         });
-        // 次の作業との間 = 休憩
         const next = upcoming[i + 1];
         if (next) {
             const breakSec = Math.max(0, Math.round((next.start - entry.end) / 1000));
@@ -925,7 +872,6 @@ function startPhase(phaseObj) {
     updateUI();
 }
 
-/** 現在時刻 + sec の HH:MM 文字列 */
 function calcEndHHMM(sec) {
     const d = new Date(Date.now() + sec * 1000);
     return toHHMM(d);
@@ -954,7 +900,6 @@ function tick() {
 
     timerState.remainingSec -= 1;
 
-    // 励まし（作業中のみ）
     if (
         timerState.phase === STATE.WORK &&
         encourageToggle.checked &&
@@ -1075,13 +1020,25 @@ function setScheduleInputsDisabled(disabled) {
 /* ---------- UI 更新 ---------- */
 
 function updateUI() {
-    // ★ 7セグ風: mm と ss を別々の span に書き込み（「:」コロンは点滅用に独立）
+    // ★ 桁ごとに分けて書き込む（時計のように桁ブレを防止）
     const totalSec = Math.max(0, Math.floor(timerState.remainingSec));
     const mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
     const ss = String(totalSec % 60).padStart(2, '0');
+
     if (segMM && segSS) {
-        segMM.textContent = mm;
-        segSS.textContent = ss;
+        const m1 = segMM.querySelector('[data-pos="m1"]');
+        const m2 = segMM.querySelector('[data-pos="m2"]');
+        const s1 = segSS.querySelector('[data-pos="s1"]');
+        const s2 = segSS.querySelector('[data-pos="s2"]');
+        if (m1 && m2 && s1 && s2) {
+            m1.textContent = mm[0];
+            m2.textContent = mm[1];
+            s1.textContent = ss[0];
+            s2.textContent = ss[1];
+        } else {
+            segMM.textContent = mm;
+            segSS.textContent = ss;
+        }
     } else {
         timeRemainingEl.textContent = `${mm}:${ss}`;
     }
@@ -1091,7 +1048,6 @@ function updateUI() {
     } else {
         timeRemainingEl.classList.remove('warning');
     }
-    // 動作中はコロンを点滅
     if (segColon) {
         segColon.classList.toggle('blink', timerState.isRunning);
     }
@@ -1151,9 +1107,7 @@ function updateUI() {
     } else if (timerState.phase === STATE.DONE) {
         progress = 1;
     }
-    // 横長プログレスバーの幅を progress (0-1) に応じて更新
     if (progressBarFg) progressBarFg.style.width = `${(progress * 100).toFixed(2)}%`;
-    // 10セグ風プログレスバーの点灯数を更新
     if (progressSegEls.length) {
         const lit = Math.round(progress * progressSegEls.length);
         progressSegEls.forEach((el, i) => el.classList.toggle('on', i < lit));
@@ -1168,10 +1122,8 @@ function updateUI() {
     }
 }
 
-/** IDLE 表示用の「総セット数」推定 */
 function guessTotalSetsForDisplay() {
     if (settings.mode === 'duration') return settings.totalSets;
-    // schedule: 未経過セット数
     const now = new Date();
     return settings.schedule.filter(r => {
         const e = parseHHMMToDate(r.end, now);
@@ -1196,22 +1148,16 @@ encourageToggle.addEventListener('change', () => {
    ========================================================= */
 
 function applySettingsToUI() {
-    // モード
     setMode(settings.mode);
-    // duration 入力
     workInput.value  = settings.workMinutes;
     breakInput.value = settings.breakMinutes;
     setsInput.value  = settings.totalSets;
-    // 励まし
     encourageToggle.checked = settings.encourage;
-    // 音声
     voiceRate.value  = settings.voiceRate;
     voicePitch.value = settings.voicePitch;
     voiceRateVal.textContent  = settings.voiceRate.toFixed(2);
     voicePitchVal.textContent = settings.voicePitch.toFixed(2);
-    // セリフ
     renderScripts();
-    // スケジュール
     renderScheduleList();
 }
 
@@ -1220,12 +1166,10 @@ bindScriptInputs();
 applySettingsToUI();
 resetTimer();
 
-// 経過済表示を 30 秒ごとに更新
 setInterval(() => {
     if (timerState.phase === STATE.IDLE) renderScheduleSkippedFlags();
 }, 30 * 1000);
 
-// 初回タップで音声合成のロックを解除（モバイル対策）
 document.addEventListener('click', () => {
     if (synth && !synth.speaking) {
         const u = new SpeechSynthesisUtterance('');
