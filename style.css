@@ -132,7 +132,6 @@ body.state-done  { background: #f5f3ff; }
     gap: 20px;
     align-items: stretch;
     margin-bottom: 4px;
-    /* 16:9相当のアスペクトを維持（パネル幅に応じて高さが決まる） */
     aspect-ratio: 16 / 7;
     min-height: 320px;
 }
@@ -234,18 +233,19 @@ body.state-done .clock-corner-label .corner-dot { background: #8b5cf6; }
 }
 
 /* ★ 桁固定の核: dchar を inline-block + 固定幅にする ★
-   Orbitronはプロポーショナルなので、桁ごとに span 化して固定幅にする */
+   Orbitronはプロポーショナルなので、桁ごとに span 化して固定幅にする
+   width を 0.78em に拡大して数字同士の重なりを解消 */
 .time-digits .dchar,
 .time-ghost .dchar {
     display: inline-block;
-    width: 0.62em;       /* 1桁の表示幅を固定（"8"も"1"も同じ幅） */
+    width: 0.78em;
     text-align: center;
     font-variant-numeric: tabular-nums;
 }
 .time-digits .dcolon,
 .time-ghost .dcolon {
     display: inline-block;
-    width: 0.32em;
+    width: 0.42em;
     text-align: center;
 }
 
@@ -258,7 +258,7 @@ body.state-done .clock-corner-label .corner-dot { background: #8b5cf6; }
     font-size: clamp(5rem, 18vw, 11rem);
     font-weight: 900;
     color: rgba(31, 41, 55, 0.05);
-    letter-spacing: 0.04em;
+    letter-spacing: 0;
     pointer-events: none;
     user-select: none;
     line-height: 1;
@@ -273,7 +273,7 @@ body.state-done .clock-corner-label .corner-dot { background: #8b5cf6; }
     font-weight: 700;
     color: var(--text-primary);
     line-height: 1;
-    letter-spacing: 0.04em;
+    letter-spacing: 0;
     z-index: 2;
 }
 .time-digits .seg-mm,
