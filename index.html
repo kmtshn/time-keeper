@@ -7,6 +7,14 @@
     <title>封入封緘タイムキーパー</title>
     <!-- インライン SVG の favicon -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%232563eb'/%3E%3Ctext x='50%25' y='62%25' font-size='40' text-anchor='middle' fill='white' font-family='sans-serif'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+    <!-- 7セグ/モノスペース風フォント（Google Fonts CDN）
+         Share Tech Mono = 1990年代の電光掲示板風モノスペース、
+         Orbitron = 角ばったSF/デジタル感のあるサンセリフ。
+         両方を組み合わせてLCD液晶風の表示を作る -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="style.css">
 
     <!-- Three.js は CDN 経由で読み込み（GitHub Pages 配信前提） -->
@@ -37,20 +45,40 @@
 
                 <!-- ★ デジタル時計風ディスプレイ ★ -->
                 <div class="clock-display">
-                    <!-- 進捗を示す薄いバー（液晶パネル下部） -->
                     <div class="clock-screen">
-                        <!-- 左上のラベル（AM/PM風の代わりに「作業中/休憩中」） -->
-                        <div class="clock-corner-label" id="clock-corner-label">READY</div>
-                        <!-- ベル風アイコン -->
-                        <div class="clock-bell" id="clock-bell" aria-hidden="true">🔔</div>
+                        <!-- 走査線・ノイズ等の演出レイヤー -->
+                        <div class="clock-scanlines" aria-hidden="true"></div>
+                        <div class="clock-glow" aria-hidden="true"></div>
 
-                        <!-- 大きなデジタル数字 -->
-                        <div id="time-remaining" class="time-digits">00:00</div>
+                        <!-- 左上のラベル（AM/PM風の代わりに「WORK/BREAK」など） -->
+                        <div class="clock-corner-label" id="clock-corner-label">
+                            <span class="corner-dot" aria-hidden="true"></span>
+                            <span id="clock-corner-text">READY</span>
+                        </div>
+
+                        <!-- 右上の小さなインジケータ（小さな7セグ風セット表示など） -->
+                        <div class="clock-mini-info">
+                            <span id="clock-mini-set" class="mini-7seg">--/--</span>
+                        </div>
+
+                        <!-- ベル風アイコン（左下） -->
+                        <div class="clock-bell" id="clock-bell" aria-hidden="true">⏰</div>
+
+                        <!-- 大きな7セグ風デジタル数字（背景に薄いゴースト数字 + 上に光る数字） -->
+                        <div class="time-digits-wrap">
+                            <span class="time-ghost" aria-hidden="true">88:88</span>
+                            <span id="time-remaining" class="time-digits">
+                                <span class="seg-mm">00</span><span class="seg-colon">:</span><span class="seg-ss">00</span>
+                            </span>
+                        </div>
 
                         <!-- フェーズ説明 -->
                         <div id="phase-text" class="phase-text">スタートを押してね</div>
 
-                        <!-- 進捗バー -->
+                        <!-- 進捗バー（10セグメント風 + 数値） -->
+                        <div class="progress-segments" id="progress-segments" aria-hidden="true">
+                            <!-- script.js で 20 個のセグメントを生成 -->
+                        </div>
                         <div class="progress-bar">
                             <div id="progress-bar-fg" class="progress-bar-fg"></div>
                         </div>
@@ -136,6 +164,27 @@
                             🔄 デフォルトに戻す
                         </button>
                     </div>
+
+                    <!-- 向き（Y軸回転）スライダー -->
+                    <div class="setting-row" style="margin-top:8px">
+                        <label for="mascot-yaw">向き <span id="mascot-yaw-val">0°</span></label>
+                        <input type="range" id="mascot-yaw" min="-180" max="180" step="1" value="0">
+                    </div>
+                    <!-- 上下チルト（X軸） -->
+                    <div class="setting-row">
+                        <label for="mascot-pitch">うなずき <span id="mascot-pitch-val">0°</span></label>
+                        <input type="range" id="mascot-pitch" min="-45" max="45" step="1" value="0">
+                    </div>
+                    <div class="setting-row">
+                        <button id="mascot-orient-reset" class="btn btn-ghost btn-small">向きをリセット</button>
+                        <div class="orient-presets">
+                            <button class="btn btn-ghost btn-small orient-preset" data-yaw="0">正面</button>
+                            <button class="btn btn-ghost btn-small orient-preset" data-yaw="-30">左斜め</button>
+                            <button class="btn btn-ghost btn-small orient-preset" data-yaw="30">右斜め</button>
+                            <button class="btn btn-ghost btn-small orient-preset" data-yaw="180">後ろ</button>
+                        </div>
+                    </div>
+
                     <p class="hint">
                         ※ 起動時はリポジトリ内の <code>assets/character.glb</code> を自動読み込み。<br>
                         　右下のマスコット枠へ <strong>ドラッグ&amp;ドロップ</strong> でも差し替え可能。

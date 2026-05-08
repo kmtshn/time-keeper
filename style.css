@@ -101,19 +101,35 @@ body.state-done  { background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%)
     margin-bottom: 22px;
 }
 
-/* 液晶パネル本体（白い枠 + 黒い画面） */
+/* ============================================================
+   ★ デジタル時計感を強化（7セグ風、走査線、ノイズ、ゴースト数字）
+   ============================================================ */
+
+/* CSS変数でLED色を一元管理（state別に上書きする） */
+.clock-screen {
+    --led-color: #38bdf8;
+    --led-bright: #7dd3fc;
+    --led-dim: rgba(56, 189, 248, 0.10);
+    --led-glow: rgba(56, 189, 248, 0.85);
+}
+
+/* 液晶パネル本体（金属ベゼル + 黒い液晶画面） */
 .clock-screen {
     position: relative;
-    background: linear-gradient(180deg, #0b1020 0%, #060914 100%);
-    border-radius: 28px;
-    padding: clamp(28px, 6vw, 48px) clamp(20px, 5vw, 56px);
-    /* 白いベゼル風のフチ */
-    border: clamp(8px, 1.4vw, 14px) solid #f8fafc;
+    /* 黒い液晶。中央に薄い縦のビネット */
+    background:
+        radial-gradient(ellipse at 50% 40%, #0a1628 0%, #050810 70%, #02040a 100%);
+    border-radius: 22px;
+    padding: clamp(36px, 6.5vw, 56px) clamp(22px, 5vw, 56px) clamp(56px, 7vw, 80px);
+    /* 金属ベゼル風（外: 明るいグレー、内: 黒のヘアライン） */
+    border: clamp(6px, 1vw, 10px) solid;
+    border-image: linear-gradient(140deg, #f1f5f9 0%, #94a3b8 30%, #cbd5e1 50%, #475569 100%) 1;
     box-shadow:
-        0 14px 30px rgba(0, 0, 0, 0.18),
-        inset 0 0 30px rgba(0, 0, 0, 0.5),
-        inset 0 0 80px rgba(56, 189, 248, 0.05);
-    min-height: clamp(220px, 30vw, 320px);
+        0 16px 36px rgba(0, 0, 0, 0.35),
+        0 2px 6px rgba(0, 0, 0, 0.2),
+        inset 0 0 40px rgba(0, 0, 0, 0.85),
+        inset 0 0 120px rgba(56, 189, 248, 0.06);
+    min-height: clamp(240px, 32vw, 360px);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -121,135 +137,245 @@ body.state-done  { background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%)
     overflow: hidden;
 }
 
-/* 画面右下のマスコット枠を考慮して、数字に右パディングを入れる
-   （マスコットと数字が重ならないように） */
-.clock-screen::before {
-    content: "";
+/* 走査線（横方向の細かいライン）+ 縦のCRTビーム感 */
+.clock-scanlines {
     position: absolute;
     inset: 0;
+    pointer-events: none;
+    z-index: 1;
     background:
-        radial-gradient(ellipse at 30% 20%, rgba(56, 189, 248, 0.06) 0%, transparent 60%),
         repeating-linear-gradient(
             0deg,
-            rgba(255, 255, 255, 0.015) 0px,
-            rgba(255, 255, 255, 0.015) 1px,
+            rgba(255, 255, 255, 0.035) 0px,
+            rgba(255, 255, 255, 0.035) 1px,
             transparent 1px,
             transparent 3px
         );
-    pointer-events: none;
-    border-radius: 18px;
+    mix-blend-mode: overlay;
+    opacity: 0.9;
 }
 
-/* 左上のラベル（「作業中」「休憩中」「READY」など、AM/PM風） */
+/* 画面のグロー（中央が少し光ってる感じ）+ ピクセルノイズ風ドット */
+.clock-glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background:
+        radial-gradient(ellipse at 50% 45%, rgba(56, 189, 248, 0.08) 0%, transparent 55%),
+        radial-gradient(ellipse at 20% 90%, rgba(56, 189, 248, 0.05) 0%, transparent 40%);
+}
+
+/* 左上ラベル: ●WORK 形式（小さなLEDドット付き） */
 .clock-corner-label {
     position: absolute;
-    top: clamp(12px, 2vw, 18px);
-    left: clamp(18px, 3vw, 28px);
-    color: #38bdf8;
-    font-family: "Courier New", "Menlo", "Consolas", monospace;
+    top: clamp(12px, 1.8vw, 18px);
+    left: clamp(18px, 2.5vw, 26px);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--led-color);
+    font-family: "Share Tech Mono", "Courier New", "Menlo", "Consolas", monospace;
     font-weight: 700;
-    font-size: clamp(0.9rem, 1.6vw, 1.15rem);
-    letter-spacing: 0.15em;
+    font-size: clamp(0.85rem, 1.4vw, 1.05rem);
+    letter-spacing: 0.2em;
     text-shadow:
-        0 0 8px rgba(56, 189, 248, 0.7),
-        0 0 16px rgba(56, 189, 248, 0.4);
-    z-index: 2;
+        0 0 6px var(--led-glow),
+        0 0 14px var(--led-glow);
+    z-index: 3;
+}
+.clock-corner-label .corner-dot {
+    display: inline-block;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--led-bright);
+    box-shadow:
+        0 0 6px var(--led-bright),
+        0 0 12px var(--led-glow);
+    animation: ledBlink 1s ease-in-out infinite;
+}
+@keyframes ledBlink {
+    0%, 60% { opacity: 1; }
+    61%, 100% { opacity: 0.25; }
 }
 
-/* 左下のベル風アイコン（演出用） */
+/* 右上の小さな7セグ風セット数表示 */
+.clock-mini-info {
+    position: absolute;
+    top: clamp(12px, 1.8vw, 18px);
+    right: clamp(18px, 2.5vw, 26px);
+    z-index: 3;
+}
+.mini-7seg {
+    font-family: "Share Tech Mono", "Courier New", monospace;
+    color: var(--led-color);
+    font-size: clamp(0.85rem, 1.4vw, 1.05rem);
+    letter-spacing: 0.18em;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 6px var(--led-glow), 0 0 12px var(--led-glow);
+    padding: 3px 8px;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    border-radius: 4px;
+    background: rgba(56, 189, 248, 0.05);
+}
+
+/* 左下のベル */
 .clock-bell {
     position: absolute;
-    bottom: clamp(14px, 2vw, 22px);
-    left: clamp(18px, 3vw, 28px);
-    color: #38bdf8;
-    font-size: clamp(1rem, 1.8vw, 1.4rem);
-    opacity: 0.8;
-    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.6));
-    z-index: 2;
-    /* デフォルトのベル絵文字は色つきなので、テキスト系にしてLED色を効かせる */
-    -webkit-text-fill-color: #38bdf8;
+    bottom: clamp(34px, 3.2vw, 44px);
+    left: clamp(18px, 2.5vw, 26px);
+    color: var(--led-color);
+    font-size: clamp(0.95rem, 1.6vw, 1.25rem);
+    opacity: 0.85;
+    filter: drop-shadow(0 0 6px var(--led-glow));
+    z-index: 3;
+    -webkit-text-fill-color: var(--led-color);
 }
 
-/* メインの大きなデジタル数字 */
-.time-digits {
-    font-family: "Courier New", "Menlo", "Consolas", monospace;
-    /* 7セグLED風に */
-    font-size: clamp(4rem, 18vw, 9rem);
+/* ===== 7セグ風 大型デジタル数字 ===== */
+.time-digits-wrap {
+    position: relative;
+    display: inline-block;
+    /* 右下マスコットと重ならないよう右パディング */
+    padding-right: clamp(70px, 16vw, 160px);
+    z-index: 2;
+    line-height: 1;
+}
+
+/* ゴースト（消灯セグ）: 88:88 を超薄く描画 → "つけ忘れたセグメント"の演出 */
+.time-ghost {
+    position: absolute;
+    top: 0; left: 0;
+    right: clamp(70px, 16vw, 160px);
+    text-align: center;
+    font-family: "Orbitron", "Share Tech Mono", "Courier New", monospace;
+    font-size: clamp(4.4rem, 19vw, 10rem);
     font-weight: 900;
-    color: #67e8f9; /* 水色LED */
+    color: rgba(56, 189, 248, 0.08);
+    letter-spacing: 0.05em;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+    user-select: none;
+}
+
+.time-digits {
+    position: relative;
+    display: inline-flex;
+    align-items: baseline;
+    /* Orbitron = 角ばったSFデジタル感、フォールバックは Share Tech Mono */
+    font-family: "Orbitron", "Share Tech Mono", "Courier New", "Menlo", "Consolas", monospace;
+    font-size: clamp(4.4rem, 19vw, 10rem);
+    font-weight: 900;
+    color: var(--led-bright);
     line-height: 1;
     letter-spacing: 0.05em;
     font-variant-numeric: tabular-nums;
-    /* グロー（光る）効果 */
     text-shadow:
-        0 0 8px rgba(103, 232, 249, 0.9),
-        0 0 18px rgba(56, 189, 248, 0.7),
-        0 0 36px rgba(56, 189, 248, 0.45);
-    /* 右下のマスコットと重ならないよう、右側にスペースを確保 */
-    padding-right: clamp(60px, 14vw, 140px);
-    z-index: 1;
+        0 0 6px var(--led-bright),
+        0 0 14px var(--led-glow),
+        0 0 28px var(--led-glow),
+        0 0 56px rgba(56, 189, 248, 0.4);
+    /* ほんのり傾けて液晶の見え方を再現する...のは止めて真っ直ぐに */
+    z-index: 2;
+}
+.time-digits .seg-mm,
+.time-digits .seg-ss {
+    display: inline-block;
+}
+.time-digits .seg-colon {
+    display: inline-block;
+    padding: 0 0.05em;
+    /* コロンは少し小さく、点滅可能 */
+    transition: opacity 0.2s;
+}
+.time-digits .seg-colon.blink {
+    animation: colonBlink 1s steps(2, end) infinite;
+}
+@keyframes colonBlink {
+    0%, 49%   { opacity: 1; }
+    50%, 100% { opacity: 0.15; }
 }
 
 /* 数字下のフェーズテキスト */
 .phase-text {
-    margin-top: 14px;
-    font-size: clamp(0.9rem, 1.6vw, 1.1rem);
-    color: #93c5fd;
+    position: relative;
+    margin-top: 18px;
+    font-family: "Share Tech Mono", "Courier New", monospace;
+    font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+    color: var(--led-color);
     font-weight: 700;
-    letter-spacing: 0.06em;
-    text-shadow: 0 0 6px rgba(147, 197, 253, 0.5);
-    padding-right: clamp(60px, 14vw, 140px);
-    z-index: 1;
+    letter-spacing: 0.12em;
+    text-shadow: 0 0 6px var(--led-glow);
+    padding-right: clamp(70px, 16vw, 160px);
+    z-index: 2;
+    text-align: center;
 }
 
-/* 進捗バー（液晶パネル下部、マスコット手前まで） */
+/* ===== 10セグメント風プログレスバー（液晶下部） ===== */
+.progress-segments {
+    position: absolute;
+    left: clamp(18px, 2.5vw, 26px);
+    right: clamp(18px, 2.5vw, 26px);
+    bottom: clamp(20px, 2.4vw, 28px);
+    display: flex;
+    gap: 3px;
+    height: 10px;
+    z-index: 3;
+}
+.progress-segments .pseg {
+    flex: 1;
+    background: var(--led-dim);
+    border-radius: 2px;
+    transition: background 0.2s, box-shadow 0.2s;
+}
+.progress-segments .pseg.on {
+    background: var(--led-bright);
+    box-shadow:
+        0 0 6px var(--led-glow),
+        0 0 12px var(--led-glow);
+}
+
+/* 細い下部プログレスバー（補助） */
 .progress-bar {
     position: absolute;
-    left: clamp(18px, 3vw, 28px);
-    right: clamp(18px, 3vw, 28px);
-    bottom: clamp(14px, 1.6vw, 18px);
-    height: 6px;
-    background: rgba(56, 189, 248, 0.15);
+    left: clamp(18px, 2.5vw, 26px);
+    right: clamp(18px, 2.5vw, 26px);
+    bottom: clamp(10px, 1.2vw, 14px);
+    height: 3px;
+    background: rgba(56, 189, 248, 0.1);
     border-radius: 999px;
     overflow: hidden;
-    z-index: 2;
+    z-index: 3;
 }
 .progress-bar-fg {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #38bdf8 0%, #67e8f9 100%);
-    box-shadow: 0 0 8px rgba(56, 189, 248, 0.7);
+    background: linear-gradient(90deg, var(--led-color), var(--led-bright));
+    box-shadow: 0 0 8px var(--led-glow);
     border-radius: 999px;
     transition: width 0.4s ease, background 0.4s ease;
 }
 
-/* 状態別のLED色変化 */
-body.state-work  .clock-corner-label,
-body.state-work  .clock-bell,
-body.state-work  .time-digits { color: #67e8f9; }
-body.state-work  .clock-corner-label { text-shadow: 0 0 8px rgba(103, 232, 249, 0.9), 0 0 16px rgba(56, 189, 248, 0.6); }
-body.state-work  .time-digits         { text-shadow: 0 0 10px rgba(103, 232, 249, 1), 0 0 22px rgba(56, 189, 248, 0.85), 0 0 44px rgba(56, 189, 248, 0.55); }
-body.state-work  .progress-bar-fg     { background: linear-gradient(90deg, #38bdf8, #67e8f9); }
-
-body.state-break .clock-corner-label,
-body.state-break .clock-bell,
-body.state-break .time-digits { color: #fde68a; }
-body.state-break .time-digits {
-    text-shadow:
-        0 0 10px rgba(253, 230, 138, 1),
-        0 0 22px rgba(245, 158, 11, 0.85),
-        0 0 44px rgba(245, 158, 11, 0.5);
+/* ===== 状態別のLED色 ===== */
+body.state-idle .clock-screen,
+body.state-work .clock-screen {
+    --led-color: #38bdf8;
+    --led-bright: #7dd3fc;
+    --led-dim: rgba(56, 189, 248, 0.10);
+    --led-glow: rgba(56, 189, 248, 0.85);
 }
-body.state-break .progress-bar-fg { background: linear-gradient(90deg, #f59e0b, #fde68a); }
-
-body.state-done .time-digits { color: #f0abfc; }
-body.state-done .time-digits {
-    text-shadow:
-        0 0 10px rgba(240, 171, 252, 1),
-        0 0 22px rgba(192, 132, 252, 0.85),
-        0 0 44px rgba(192, 132, 252, 0.5);
+body.state-break .clock-screen {
+    --led-color: #f59e0b;
+    --led-bright: #fde68a;
+    --led-dim: rgba(245, 158, 11, 0.12);
+    --led-glow: rgba(245, 158, 11, 0.85);
 }
-body.state-done .progress-bar-fg { background: linear-gradient(90deg, #c084fc, #f0abfc); }
+body.state-done .clock-screen {
+    --led-color: #c084fc;
+    --led-bright: #f0abfc;
+    --led-dim: rgba(192, 132, 252, 0.12);
+    --led-glow: rgba(192, 132, 252, 0.85);
+}
 
 /* ============================================================
    ★ 右下にちょこんと座るマスコット
@@ -665,18 +791,37 @@ body.state-done .progress-bar-fg { background: linear-gradient(90deg, #c084fc, #
     animation: pulseDigits 1s ease-in-out infinite;
 }
 
+/* 向きプリセットボタンのレイアウト */
+.orient-presets {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+}
+.orient-presets .orient-preset {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    min-height: 32px;
+}
+
 /* ---------- 小画面 ---------- */
 @media (max-width: 600px) {
     .control-buttons { grid-template-columns: 1fr; }
     .clock-screen {
-        padding: 28px 18px;
+        padding: 32px 16px 56px;
         min-height: 220px;
     }
-    .time-digits {
-        font-size: clamp(3.4rem, 16vw, 5rem);
-        padding-right: clamp(50px, 22vw, 110px);
+    .time-digits,
+    .time-ghost {
+        font-size: clamp(3.4rem, 17vw, 5.6rem);
     }
-    .phase-text { padding-right: clamp(50px, 22vw, 110px); }
+    .time-digits-wrap,
+    .phase-text {
+        padding-right: clamp(56px, 24vw, 120px);
+    }
+    .time-ghost {
+        right: clamp(56px, 24vw, 120px);
+    }
     .mascot-corner {
         width: clamp(96px, 28vw, 140px);
         height: clamp(96px, 28vw, 140px);
