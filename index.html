@@ -6,14 +6,17 @@
     <meta name="description" content="封入封緘作業用タイムキーパーアプリ。3Dキャラクターと音声でペースを支援します。">
     <title>封入封緘タイムキーパー</title>
     <!-- インライン SVG の favicon -->
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%232563eb'/%3E%3Ctext x='50%25' y='62%25' font-size='40' text-anchor='middle' fill='white' font-family='sans-serif'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
-    <!-- 7セグ/モノスペース風フォント（Google Fonts CDN）
-         Share Tech Mono = 1990年代の電光掲示板風モノスペース、
-         Orbitron = 角ばったSF/デジタル感のあるサンセリフ。
-         両方を組み合わせてLCD液晶風の表示を作る -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111827'/%3E%3Ctext x='50%25' y='62%25' font-size='38' text-anchor='middle' fill='white' font-family='sans-serif'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+
+    <!-- LINE Seed JP（本文）+ Orbitron（時計の数字のみ）
+         LINE Seed JP は Fontsource(@fontsource/line-seed-jp) を jsDelivr CDN 経由で配信 -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/line-seed-jp/400.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/line-seed-jp/700.css">
+    <!-- 時計の数字専用フォント（角ばったSF/デジタル感） -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="style.css">
 
@@ -43,49 +46,45 @@
                     <span id="set-info" class="set-info">セット 0 / 0</span>
                 </div>
 
-                <!-- ★ デジタル時計風ディスプレイ ★ -->
+                <!-- ★ デジタル時計（中央配置） ★ -->
                 <div class="clock-display">
                     <div class="clock-screen">
-                        <!-- 走査線・ノイズ等の演出レイヤー -->
+                        <!-- 走査線・ピクセルグロー演出レイヤー -->
                         <div class="clock-scanlines" aria-hidden="true"></div>
                         <div class="clock-glow" aria-hidden="true"></div>
 
-                        <!-- 左上のラベル（AM/PM風の代わりに「WORK/BREAK」など） -->
-                        <div class="clock-corner-label" id="clock-corner-label">
-                            <span class="corner-dot" aria-hidden="true"></span>
-                            <span id="clock-corner-text">READY</span>
+                        <!-- 上部メタ情報（ラベル + セット数） -->
+                        <div class="clock-meta">
+                            <div class="clock-corner-label" id="clock-corner-label">
+                                <span class="corner-dot" aria-hidden="true"></span>
+                                <span id="clock-corner-text">READY</span>
+                            </div>
+                            <div class="clock-mini-info">
+                                <span id="clock-mini-set" class="mini-7seg">--/--</span>
+                            </div>
                         </div>
 
-                        <!-- 右上の小さなインジケータ（小さな7セグ風セット表示など） -->
-                        <div class="clock-mini-info">
-                            <span id="clock-mini-set" class="mini-7seg">--/--</span>
+                        <!-- 中央のメイン表示（数字を完全中央に） -->
+                        <div class="clock-main">
+                            <div class="time-digits-wrap">
+                                <span class="time-ghost" aria-hidden="true">88:88</span>
+                                <span id="time-remaining" class="time-digits">
+                                    <span class="seg-mm">00</span><span class="seg-colon">:</span><span class="seg-ss">00</span>
+                                </span>
+                            </div>
+                            <div id="phase-text" class="phase-text">スタートを押してね</div>
                         </div>
 
-                        <!-- ベル風アイコン（左下） -->
-                        <div class="clock-bell" id="clock-bell" aria-hidden="true">⏰</div>
-
-                        <!-- 大きな7セグ風デジタル数字（背景に薄いゴースト数字 + 上に光る数字） -->
-                        <div class="time-digits-wrap">
-                            <span class="time-ghost" aria-hidden="true">88:88</span>
-                            <span id="time-remaining" class="time-digits">
-                                <span class="seg-mm">00</span><span class="seg-colon">:</span><span class="seg-ss">00</span>
-                            </span>
-                        </div>
-
-                        <!-- フェーズ説明 -->
-                        <div id="phase-text" class="phase-text">スタートを押してね</div>
-
-                        <!-- 進捗バー（10セグメント風 + 数値） -->
-                        <div class="progress-segments" id="progress-segments" aria-hidden="true">
-                            <!-- script.js で 20 個のセグメントを生成 -->
-                        </div>
-                        <div class="progress-bar">
-                            <div id="progress-bar-fg" class="progress-bar-fg"></div>
+                        <!-- 下部のプログレス -->
+                        <div class="clock-bottom">
+                            <div class="progress-segments" id="progress-segments" aria-hidden="true">
+                                <!-- script.js で 20 個のセグメントを生成 -->
+                            </div>
                         </div>
                     </div>
 
-                    <!-- ★ 右下にちょこんと座るマスコット ★ -->
-                    <div class="mascot-corner">
+                    <!-- ★ マスコットは時計の外（下）に独立配置 ★ -->
+                    <div class="mascot-stage">
                         <div id="canvas-container" class="canvas-container">
                             <div id="loading-overlay" class="loading-overlay">
                                 <div class="spinner"></div>
