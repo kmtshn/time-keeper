@@ -1,0 +1,447 @@
+/* =========================================================
+   封入封緘タイムキーパー  スタイルシート
+   - モバイルフレンドリーなレイアウト
+   - 状態（待機/作業/休憩）に応じてグラデーション背景を切替
+   ========================================================= */
+
+/* ---------- リセット & 基本 ---------- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
+                 "Meiryo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #1f2937;
+    /* 状態ごとの背景は body のクラスで切替（下のセクション参照） */
+    background: linear-gradient(135deg, #e0e7ff 0%, #f0f9ff 100%);
+    transition: background 0.8s ease;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* 待機中（idle）: 落ち着いた淡い色 */
+body.state-idle {
+    background: linear-gradient(135deg, #e0e7ff 0%, #f0f9ff 100%);
+}
+
+/* 作業中（work）: 集中できる青系 */
+body.state-work {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #38bdf8 100%);
+    color: #f8fafc;
+}
+
+/* 休憩中（break）: リラックスできる緑/オレンジ系 */
+body.state-break {
+    background: linear-gradient(135deg, #fb923c 0%, #f59e0b 40%, #34d399 100%);
+    color: #1f2937;
+}
+
+/* 完了（done） */
+body.state-done {
+    background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%);
+    color: #fff;
+}
+
+/* ---------- レイアウト ---------- */
+.app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.header h1 {
+    font-size: clamp(1.5rem, 4vw, 2.2rem);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.subtitle {
+    margin-top: 6px;
+    opacity: 0.85;
+    font-size: 0.95rem;
+}
+
+/* メインを 2 カラム（小画面では 1 カラム）に */
+.main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    flex: 1;
+}
+
+@media (max-width: 900px) {
+    .main-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* パネル共通スタイル（半透明のガラス風） */
+.character-panel,
+.timer-panel {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    color: #1f2937; /* パネル内は常に読みやすい色 */
+}
+
+.panel-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: #1e293b;
+}
+
+/* ---------- 3D キャラクター ---------- */
+.canvas-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-height: 420px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: linear-gradient(180deg, #dbeafe 0%, #fef3c7 100%);
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.08);
+}
+
+.canvas-container canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* ドラッグ&ドロップ時のオーバーレイ */
+.drop-overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.6);
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.1rem;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.canvas-container.dragover .drop-overlay {
+    display: flex;
+}
+
+/* モデル読み込み用ボタン */
+.model-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+}
+
+.file-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #2563eb;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: background 0.2s, transform 0.1s;
+    user-select: none;
+}
+
+.file-label:hover { background: #1d4ed8; }
+.file-label:active { transform: scale(0.97); }
+
+.hint {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+/* ---------- タイマー表示 ---------- */
+.status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.status-label {
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #fff;
+}
+
+.status-idle { background: #94a3b8; }
+.status-work { background: #2563eb; }
+.status-break { background: #f59e0b; }
+.status-done { background: #a855f7; }
+
+.set-info {
+    font-weight: 600;
+    color: #475569;
+    font-size: 0.95rem;
+}
+
+/* 円形プログレス */
+.timer-display {
+    position: relative;
+    width: 100%;
+    max-width: 320px;
+    aspect-ratio: 1 / 1;
+    margin: 16px auto 24px;
+}
+
+.progress-ring {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg); /* 12 時方向から開始 */
+}
+
+.progress-ring-bg {
+    fill: none;
+    stroke: #e5e7eb;
+    stroke-width: 14;
+}
+
+.progress-ring-fg {
+    fill: none;
+    stroke: #2563eb;             /* 既定色（待機中） */
+    stroke-width: 14;
+    stroke-linecap: round;
+    /* 円周 = 2 * π * r = 2 * π * 100 ≒ 628.318 */
+    stroke-dasharray: 628.318;
+    stroke-dashoffset: 628.318;  /* 進捗 0% = 全部隠す */
+    transition: stroke-dashoffset 0.4s ease, stroke 0.4s ease;
+}
+
+/* 状態別の進捗線の色 */
+body.state-work .progress-ring-fg { stroke: #38bdf8; }
+body.state-break .progress-ring-fg { stroke: #f59e0b; }
+body.state-done .progress-ring-fg { stroke: #a855f7; }
+
+/* 中央の時間テキスト */
+.time-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.time-remaining {
+    font-size: clamp(2.4rem, 8vw, 3.6rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: #0f172a;
+    line-height: 1;
+}
+
+.phase-text {
+    margin-top: 8px;
+    font-size: 0.95rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+/* ---------- ボタン ---------- */
+.control-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.btn {
+    border: none;
+    padding: 14px 12px;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s, background 0.2s, opacity 0.2s;
+    font-family: inherit;
+    min-height: 48px;
+}
+
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary {
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+.btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+
+.btn-secondary {
+    background: #f59e0b;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+.btn-secondary:hover:not(:disabled) { background: #d97706; }
+
+.btn-ghost {
+    background: #f1f5f9;
+    color: #1f2937;
+    border: 1px solid #cbd5e1;
+}
+.btn-ghost:hover:not(:disabled) { background: #e2e8f0; }
+
+.btn-small {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    min-height: 36px;
+}
+
+/* ---------- 設定 ---------- */
+.settings {
+    background: #f8fafc;
+    border-radius: 14px;
+    padding: 18px;
+    border: 1px solid #e2e8f0;
+}
+
+.settings h3 {
+    font-size: 1rem;
+    margin-bottom: 12px;
+    color: #1e293b;
+}
+
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px dashed #e2e8f0;
+    gap: 12px;
+}
+.setting-row:last-child { border-bottom: none; }
+
+.setting-row label {
+    font-weight: 600;
+    color: #334155;
+    font-size: 0.95rem;
+}
+
+.setting-row input[type="number"],
+.setting-row select {
+    width: 120px;
+    padding: 8px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    background: #fff;
+    text-align: right;
+}
+
+.setting-row input[type="number"]:focus,
+.setting-row select:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+}
+
+/* ---------- トグルスイッチ ---------- */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+}
+
+.switch input { opacity: 0; width: 0; height: 0; }
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #cbd5e1;
+    border-radius: 999px;
+    transition: 0.3s;
+}
+
+.slider::before {
+    content: "";
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    left: 3px;
+    top: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: 0.3s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.switch input:checked + .slider {
+    background: #2563eb;
+}
+
+.switch input:checked + .slider::before {
+    transform: translateX(24px);
+}
+
+/* ---------- フッター ---------- */
+.footer {
+    text-align: center;
+    margin-top: 24px;
+    opacity: 0.7;
+    font-size: 0.8rem;
+}
+
+/* ---------- 残り時間がわずかな時のパルスアニメ ---------- */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.05); }
+}
+
+.time-remaining.warning {
+    color: #dc2626;
+    animation: pulse 1s ease-in-out infinite;
+}
+
+/* ---------- 小画面調整 ---------- */
+@media (max-width: 480px) {
+    .control-buttons {
+        grid-template-columns: 1fr;
+    }
+    .character-panel,
+    .timer-panel {
+        padding: 18px;
+    }
+    .setting-row input[type="number"],
+    .setting-row select {
+        width: 100px;
+    }
+}
