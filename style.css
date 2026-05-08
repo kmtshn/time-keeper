@@ -1,15 +1,11 @@
 /* =========================================================
    封入封緘タイムキーパー  スタイルシート
-   - モバイルフレンドリーなレイアウト
+   - メインは「デジタル時計風タイマー」+「右下にちょこんと座るキャラ」
    - 状態（待機/作業/休憩）に応じてグラデーション背景を切替
    ========================================================= */
 
 /* ---------- リセット & 基本 ---------- */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
     height: 100%;
@@ -34,15 +30,16 @@ body.state-done  { background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%)
 
 /* ---------- レイアウト ---------- */
 .app {
-    max-width: 1200px;
+    max-width: 980px;
     margin: 0 auto;
     padding: 24px 16px 48px;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    gap: 20px;
 }
 
-.header { text-align: center; margin-bottom: 24px; }
+.header { text-align: center; }
 .header h1 {
     font-size: clamp(1.5rem, 4vw, 2.2rem);
     font-weight: 800;
@@ -51,133 +48,28 @@ body.state-done  { background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%)
 }
 .subtitle { margin-top: 6px; opacity: 0.85; font-size: 0.95rem; }
 
-.main-grid {
-    display: grid;
-    /* タイマーが主役なので 5:7 で右側（タイマー）を広く */
-    grid-template-columns: 5fr 7fr;
-    gap: 24px;
+.main {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
     flex: 1;
-    align-items: start;
-}
-@media (max-width: 900px) {
-    .main-grid { grid-template-columns: 1fr; }
 }
 
-/* パネル共通スタイル */
-.character-panel,
+/* ============================================================
+   ★ メイン: デジタル時計風タイマー
+   ============================================================ */
+
 .timer-panel {
     background: rgba(255, 255, 255, 0.88);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border-radius: 20px;
+    border-radius: 24px;
     padding: 24px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.14);
     color: #1f2937;
 }
-.panel-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-bottom: 12px;
-    color: #1e293b;
-}
 
-/* ---------- 3D キャラクター ---------- */
-.canvas-container {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    max-height: 360px;        /* タイマー優先のためやや控えめ */
-    border-radius: 16px;
-    overflow: hidden;
-    background: linear-gradient(180deg, #dbeafe 0%, #fef3c7 100%);
-    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.08);
-}
-.canvas-container canvas {
-    display: block;
-    width: 100% !important;
-    height: 100% !important;
-}
-
-/* ロード中スピナー */
-.loading-overlay {
-    position: absolute;
-    inset: 0;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 12px;
-    background: rgba(255, 255, 255, 0.6);
-    color: #1e293b;
-    font-weight: 600;
-    z-index: 5;
-    pointer-events: none;
-}
-.loading-overlay.visible { display: flex; }
-.spinner {
-    width: 36px;
-    height: 36px;
-    border: 4px solid #cbd5e1;
-    border-top-color: #2563eb;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ドラッグ&ドロップ時オーバーレイ */
-.drop-overlay {
-    position: absolute;
-    inset: 0;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    background: rgba(37, 99, 235, 0.6);
-    color: #fff;
-    font-weight: 700;
-    font-size: 1.1rem;
-    pointer-events: none;
-    z-index: 10;
-}
-.canvas-container.dragover .drop-overlay { display: flex; }
-
-.model-controls {
-    display: flex;
-    gap: 10px;
-    margin-top: 14px;
-    flex-wrap: wrap;
-}
-.file-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #2563eb;
-    color: #fff;
-    padding: 10px 16px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: background 0.2s, transform 0.1s;
-    user-select: none;
-}
-.file-label:hover { background: #1d4ed8; }
-.file-label:active { transform: scale(0.97); }
-
-.hint {
-    margin-top: 10px;
-    font-size: 0.8rem;
-    color: #6b7280;
-    line-height: 1.5;
-}
-.hint code {
-    background: #f1f5f9;
-    padding: 1px 6px;
-    border-radius: 4px;
-    font-size: 0.85em;
-    color: #1e40af;
-}
-
-/* ---------- タイマー表示 ---------- */
+/* ----- 状態バー ----- */
 .status-bar {
     display: flex;
     justify-content: space-between;
@@ -197,66 +89,245 @@ body.state-done  { background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%)
 .status-work  { background: #2563eb; }
 .status-break { background: #f59e0b; }
 .status-done  { background: #a855f7; }
+.set-info { font-weight: 700; color: #475569; font-size: 0.95rem; }
 
-.set-info { font-weight: 600; color: #475569; font-size: 0.95rem; }
+/* ============================================================
+   ★ デジタル時計ディスプレイ（黒い液晶パネル + 水色LED風数字）
+   ============================================================ */
 
-.timer-display {
+.clock-display {
     position: relative;
-    width: 100%;
-    max-width: 520px;        /* タイマーが主役なので大きく */
-    aspect-ratio: 1 / 1;
-    margin: 12px auto 28px;
+    /* 液晶パネルとマスコットの位置決め用コンテナ */
+    margin-bottom: 22px;
 }
-.progress-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
-.progress-ring-bg { fill: none; stroke: #e5e7eb; stroke-width: 16; }
-.progress-ring-fg {
-    fill: none;
-    stroke: #2563eb;
-    stroke-width: 16;
-    stroke-linecap: round;
-    stroke-dasharray: 628.318;
-    stroke-dashoffset: 628.318;
-    transition: stroke-dashoffset 0.4s ease, stroke 0.4s ease;
-    filter: drop-shadow(0 2px 6px rgba(37, 99, 235, 0.25));
-}
-body.state-work  .progress-ring-fg { stroke: #38bdf8; }
-body.state-break .progress-ring-fg { stroke: #f59e0b; }
-body.state-done  .progress-ring-fg { stroke: #a855f7; }
 
-.time-text {
-    position: absolute;
-    inset: 0;
+/* 液晶パネル本体（白い枠 + 黒い画面） */
+.clock-screen {
+    position: relative;
+    background: linear-gradient(180deg, #0b1020 0%, #060914 100%);
+    border-radius: 28px;
+    padding: clamp(28px, 6vw, 48px) clamp(20px, 5vw, 56px);
+    /* 白いベゼル風のフチ */
+    border: clamp(8px, 1.4vw, 14px) solid #f8fafc;
+    box-shadow:
+        0 14px 30px rgba(0, 0, 0, 0.18),
+        inset 0 0 30px rgba(0, 0, 0, 0.5),
+        inset 0 0 80px rgba(56, 189, 248, 0.05);
+    min-height: clamp(220px, 30vw, 320px);
     display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: center;
-    text-align: center;
-    padding: 0 8%;
-}
-.time-remaining {
-    /* 主役の時刻表示。一気に大型化 */
-    font-size: clamp(3.6rem, 14vw, 6.4rem);
-    font-weight: 900;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.01em;
-    color: #0f172a;
-    line-height: 0.95;
-    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-}
-.phase-text {
-    margin-top: 12px;
-    font-size: clamp(0.95rem, 1.6vw, 1.15rem);
-    color: #475569;
-    font-weight: 700;
-    letter-spacing: 0.02em;
+    align-items: center;
+    overflow: hidden;
 }
 
-/* ---------- ボタン ---------- */
+/* 画面右下のマスコット枠を考慮して、数字に右パディングを入れる
+   （マスコットと数字が重ならないように） */
+.clock-screen::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse at 30% 20%, rgba(56, 189, 248, 0.06) 0%, transparent 60%),
+        repeating-linear-gradient(
+            0deg,
+            rgba(255, 255, 255, 0.015) 0px,
+            rgba(255, 255, 255, 0.015) 1px,
+            transparent 1px,
+            transparent 3px
+        );
+    pointer-events: none;
+    border-radius: 18px;
+}
+
+/* 左上のラベル（「作業中」「休憩中」「READY」など、AM/PM風） */
+.clock-corner-label {
+    position: absolute;
+    top: clamp(12px, 2vw, 18px);
+    left: clamp(18px, 3vw, 28px);
+    color: #38bdf8;
+    font-family: "Courier New", "Menlo", "Consolas", monospace;
+    font-weight: 700;
+    font-size: clamp(0.9rem, 1.6vw, 1.15rem);
+    letter-spacing: 0.15em;
+    text-shadow:
+        0 0 8px rgba(56, 189, 248, 0.7),
+        0 0 16px rgba(56, 189, 248, 0.4);
+    z-index: 2;
+}
+
+/* 左下のベル風アイコン（演出用） */
+.clock-bell {
+    position: absolute;
+    bottom: clamp(14px, 2vw, 22px);
+    left: clamp(18px, 3vw, 28px);
+    color: #38bdf8;
+    font-size: clamp(1rem, 1.8vw, 1.4rem);
+    opacity: 0.8;
+    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.6));
+    z-index: 2;
+    /* デフォルトのベル絵文字は色つきなので、テキスト系にしてLED色を効かせる */
+    -webkit-text-fill-color: #38bdf8;
+}
+
+/* メインの大きなデジタル数字 */
+.time-digits {
+    font-family: "Courier New", "Menlo", "Consolas", monospace;
+    /* 7セグLED風に */
+    font-size: clamp(4rem, 18vw, 9rem);
+    font-weight: 900;
+    color: #67e8f9; /* 水色LED */
+    line-height: 1;
+    letter-spacing: 0.05em;
+    font-variant-numeric: tabular-nums;
+    /* グロー（光る）効果 */
+    text-shadow:
+        0 0 8px rgba(103, 232, 249, 0.9),
+        0 0 18px rgba(56, 189, 248, 0.7),
+        0 0 36px rgba(56, 189, 248, 0.45);
+    /* 右下のマスコットと重ならないよう、右側にスペースを確保 */
+    padding-right: clamp(60px, 14vw, 140px);
+    z-index: 1;
+}
+
+/* 数字下のフェーズテキスト */
+.phase-text {
+    margin-top: 14px;
+    font-size: clamp(0.9rem, 1.6vw, 1.1rem);
+    color: #93c5fd;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-shadow: 0 0 6px rgba(147, 197, 253, 0.5);
+    padding-right: clamp(60px, 14vw, 140px);
+    z-index: 1;
+}
+
+/* 進捗バー（液晶パネル下部、マスコット手前まで） */
+.progress-bar {
+    position: absolute;
+    left: clamp(18px, 3vw, 28px);
+    right: clamp(18px, 3vw, 28px);
+    bottom: clamp(14px, 1.6vw, 18px);
+    height: 6px;
+    background: rgba(56, 189, 248, 0.15);
+    border-radius: 999px;
+    overflow: hidden;
+    z-index: 2;
+}
+.progress-bar-fg {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #38bdf8 0%, #67e8f9 100%);
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.7);
+    border-radius: 999px;
+    transition: width 0.4s ease, background 0.4s ease;
+}
+
+/* 状態別のLED色変化 */
+body.state-work  .clock-corner-label,
+body.state-work  .clock-bell,
+body.state-work  .time-digits { color: #67e8f9; }
+body.state-work  .clock-corner-label { text-shadow: 0 0 8px rgba(103, 232, 249, 0.9), 0 0 16px rgba(56, 189, 248, 0.6); }
+body.state-work  .time-digits         { text-shadow: 0 0 10px rgba(103, 232, 249, 1), 0 0 22px rgba(56, 189, 248, 0.85), 0 0 44px rgba(56, 189, 248, 0.55); }
+body.state-work  .progress-bar-fg     { background: linear-gradient(90deg, #38bdf8, #67e8f9); }
+
+body.state-break .clock-corner-label,
+body.state-break .clock-bell,
+body.state-break .time-digits { color: #fde68a; }
+body.state-break .time-digits {
+    text-shadow:
+        0 0 10px rgba(253, 230, 138, 1),
+        0 0 22px rgba(245, 158, 11, 0.85),
+        0 0 44px rgba(245, 158, 11, 0.5);
+}
+body.state-break .progress-bar-fg { background: linear-gradient(90deg, #f59e0b, #fde68a); }
+
+body.state-done .time-digits { color: #f0abfc; }
+body.state-done .time-digits {
+    text-shadow:
+        0 0 10px rgba(240, 171, 252, 1),
+        0 0 22px rgba(192, 132, 252, 0.85),
+        0 0 44px rgba(192, 132, 252, 0.5);
+}
+body.state-done .progress-bar-fg { background: linear-gradient(90deg, #c084fc, #f0abfc); }
+
+/* ============================================================
+   ★ 右下にちょこんと座るマスコット
+   ============================================================ */
+
+.mascot-corner {
+    position: absolute;
+    /* 液晶パネルの外側、右下からはみ出る形で座る */
+    right: clamp(-6px, -0.5vw, 0px);
+    bottom: clamp(-12px, -1.2vw, -8px);
+    width: clamp(110px, 22vw, 200px);
+    height: clamp(110px, 22vw, 200px);
+    z-index: 5;
+    pointer-events: auto;
+}
+
+.canvas-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    /* 影で「机に座っている」感じを出す */
+    filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.25));
+    background: transparent;
+    cursor: grab;
+}
+.canvas-container canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* ロード中スピナー */
+.loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+}
+.loading-overlay.visible { display: flex; }
+.spinner {
+    width: 30px;
+    height: 30px;
+    border: 4px solid #cbd5e1;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ドラッグ&ドロップ時オーバーレイ */
+.drop-overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.75);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-align: center;
+    line-height: 1.3;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 10;
+}
+.canvas-container.dragover .drop-overlay { display: flex; }
+
+/* ---------- 操作ボタン ---------- */
 .control-buttons {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
-    margin-bottom: 24px;
 }
 .btn {
     border: none;
@@ -267,7 +338,7 @@ body.state-done  .progress-ring-fg { stroke: #a855f7; }
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.2s, background 0.2s, opacity 0.2s;
     font-family: inherit;
-    min-height: 48px;
+    min-height: 52px;
 }
 .btn:active:not(:disabled) { transform: scale(0.97); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -296,24 +367,28 @@ body.state-done  .progress-ring-fg { stroke: #a855f7; }
     min-height: 36px;
 }
 
-.btn-danger {
-    background: #fee2e2; color: #b91c1c;
-    border: 1px solid #fca5a5;
-}
-.btn-danger:hover:not(:disabled) { background: #fecaca; }
+/* ============================================================
+   設定エリア
+   ============================================================ */
 
-/* ---------- 設定パネル ---------- */
-.settings {
-    background: #f8fafc;
-    border-radius: 14px;
-    padding: 18px;
-    border: 1px solid #e2e8f0;
-    margin-bottom: 16px;
+.settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
-.settings:last-child { margin-bottom: 0; }
+
+.settings {
+    background: rgba(255, 255, 255, 0.88);
+    border-radius: 16px;
+    padding: 16px 20px;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    color: #1f2937;
+}
 .settings h3 {
     font-size: 1rem;
     color: #1e293b;
+    display: inline-block;
 }
 .settings-header {
     display: flex;
@@ -321,10 +396,9 @@ body.state-done  .progress-ring-fg { stroke: #a855f7; }
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 12px;
 }
 
-/* details/summary 用 */
+/* details/summary */
 .collapsible summary {
     list-style: none;
     cursor: pointer;
@@ -368,7 +442,6 @@ body.state-done  .progress-ring-fg { stroke: #a855f7; }
     color: #1e40af;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
-
 .mode-pane { display: none; }
 .mode-pane.active { display: block; }
 
@@ -399,17 +472,14 @@ body.state-done  .progress-ring-fg { stroke: #a855f7; }
     background: #fff;
     text-align: right;
 }
-.setting-row input[type="range"] {
-    flex: 1;
-    max-width: 180px;
-}
+.setting-row input[type="range"] { flex: 1; max-width: 180px; }
 .setting-row input:focus,
 .setting-row select:focus {
     outline: 2px solid #2563eb;
     outline-offset: 1px;
 }
 
-/* ---------- スケジュールリスト（時刻指定） ---------- */
+/* スケジュールリスト */
 .schedule-list {
     display: flex;
     flex-direction: column;
@@ -457,10 +527,7 @@ body.state-done  .progress-ring-fg { stroke: #a855f7; }
     background: #fff;
     text-align: center;
 }
-.schedule-row .row-tilde {
-    color: #94a3b8;
-    font-weight: 700;
-}
+.schedule-row .row-tilde { color: #94a3b8; font-weight: 700; }
 .schedule-row .row-remove {
     background: transparent;
     border: none;
@@ -473,23 +540,52 @@ body.state-done  .progress-ring-fg { stroke: #a855f7; }
 }
 .schedule-row .row-remove:hover { background: #fee2e2; }
 
-.schedule-actions {
+.schedule-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* モデル制御 */
+.model-controls {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
 }
+.file-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #2563eb;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: background 0.2s, transform 0.1s;
+    user-select: none;
+}
+.file-label:hover { background: #1d4ed8; }
+.file-label:active { transform: scale(0.97); }
 
-/* ---------- セリフ編集 ---------- */
+.hint {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: #6b7280;
+    line-height: 1.5;
+}
+.hint code {
+    background: #f1f5f9;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: #1e40af;
+}
+
+/* セリフ編集 */
 .subsection-title {
     margin-top: 14px;
     font-size: 0.95rem;
     color: #1e293b;
 }
-.script-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
+.script-editor { display: flex; flex-direction: column; gap: 4px; }
 .script-editor label {
     margin-top: 8px;
     font-weight: 600;
@@ -518,7 +614,7 @@ body.state-done  .progress-ring-fg { stroke: #a855f7; }
     justify-content: flex-end;
 }
 
-/* ---------- トグルスイッチ ---------- */
+/* トグルスイッチ */
 .switch {
     position: relative;
     display: inline-block;
@@ -547,35 +643,48 @@ body.state-done  .progress-ring-fg { stroke: #a855f7; }
 .switch input:checked + .slider { background: #2563eb; }
 .switch input:checked + .slider::before { transform: translateX(24px); }
 
-/* ---------- フッター ---------- */
+/* フッター */
 .footer {
     text-align: center;
-    margin-top: 24px;
+    margin-top: 12px;
     opacity: 0.7;
     font-size: 0.8rem;
 }
 
-/* ---------- 警告アニメ ---------- */
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50%      { transform: scale(1.05); }
+/* 警告アニメ（残り10秒以下で点滅風） */
+@keyframes pulseDigits {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
 }
-.time-remaining.warning {
-    color: #dc2626;
-    animation: pulse 1s ease-in-out infinite;
+.time-digits.warning {
+    color: #fca5a5 !important;
+    text-shadow:
+        0 0 10px rgba(252, 165, 165, 1),
+        0 0 22px rgba(220, 38, 38, 0.85),
+        0 0 44px rgba(220, 38, 38, 0.55) !important;
+    animation: pulseDigits 1s ease-in-out infinite;
 }
 
 /* ---------- 小画面 ---------- */
-@media (max-width: 480px) {
+@media (max-width: 600px) {
     .control-buttons { grid-template-columns: 1fr; }
-    .character-panel,
-    .timer-panel { padding: 18px; }
+    .clock-screen {
+        padding: 28px 18px;
+        min-height: 220px;
+    }
+    .time-digits {
+        font-size: clamp(3.4rem, 16vw, 5rem);
+        padding-right: clamp(50px, 22vw, 110px);
+    }
+    .phase-text { padding-right: clamp(50px, 22vw, 110px); }
+    .mascot-corner {
+        width: clamp(96px, 28vw, 140px);
+        height: clamp(96px, 28vw, 140px);
+        right: -4px;
+        bottom: -8px;
+    }
     .setting-row input[type="number"],
     .setting-row input[type="time"],
     .setting-row select { width: 110px; }
-    .schedule-row {
-        grid-template-columns: auto 1fr auto 1fr auto;
-        font-size: 0.85rem;
-    }
     .mode-tab { padding: 6px 10px; font-size: 0.8rem; }
 }
