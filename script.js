@@ -100,9 +100,15 @@ const loadingOverlay  = document.getElementById('loading-overlay');
 const scene = new THREE.Scene();
 scene.background = null;
 
-const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-camera.position.set(0, 1.2, 4);
-camera.lookAt(0, 0.8, 0);
+// カメラ: モデル毎に距離・注視点を動的に算出するので、ここの値は仮置き
+const CAMERA_FOV = 35;
+const camera = new THREE.PerspectiveCamera(CAMERA_FOV, 1, 0.1, 1000);
+camera.position.set(0, 1.2, 5);
+camera.lookAt(0, 0.9, 0);
+
+// モデルの外接情報（fitCameraToModel で更新）。リサイズ時の再フィットに使用
+const cameraTarget = new THREE.Vector3(0, 0.9, 0);
+let modelBoundingRadius = 1.2;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -129,6 +135,7 @@ scene.add(shadowMesh);
 
 let currentModel = null;
 let mixer = null;
+let breatheBaseY = null; // 呼吸アニメ用の基準Y（モデル切替で null にリセット）
 const clock = new THREE.Clock();
 
 /** プレースホルダー（GLB読み込み失敗時のフォールバック） */
@@ -186,22 +193,96 @@ function clearCurrentModel() {
         currentModel = null;
     }
     mixer = null;
+    breatheBaseY = null; // 次のモデルで基準Yを再キャプチャするためリセット
 }
 
-/** モデルをシーンに配置（自動正規化）*/
+/**
+ * モデルをシーンに配置（自動正規化＋カメラ自動フィット）
+ *  - モデルの外接球を基準に、Y軸回転中も画面内に収まるカメラ距離を計算
+ *  - 縦長/横長/奥行きのあるモデル、ビュー縦横比に応じて自動調整
+ */
 function placeModel(model) {
+    // 1) いったんワールド原点に置いてから外接箱を取る
+    model.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
+
+    // 2) 高さ約2.0unit に正規化（小さすぎ/大きすぎ対策）
     const desired = 2.0;
     const maxDim = Math.max(size.x, size.y, size.z) || 1;
     const scale = desired / maxDim;
     model.scale.setScalar(scale);
+
+    // 3) X/Z は中心を原点に、Y は床(=0) に乗るように
     model.position.x = -center.x * scale;
     model.position.z = -center.z * scale;
     model.position.y = -box.min.y * scale;
+
     scene.add(model);
     currentModel = model;
+
+    // 4) スケール適用後の外接情報を再計算（カメラフィット用）
+    model.updateMatrixWorld(true);
+    const fittedBox = new THREE.Box3().setFromObject(model);
+    const fittedSize = fittedBox.getSize(new THREE.Vector3());
+    const fittedCenter = fittedBox.getCenter(new THREE.Vector3());
+
+    // Y軸まわりに回転するため、XZ平面上で最も遠い点までの距離（半径）
+    // をその回転半径として採用。Yはそのまま使う。これに少し余裕(マージン)を足す
+    const halfX = fittedSize.x / 2;
+    const halfZ = fittedSize.z / 2;
+    const halfY = fittedSize.y / 2;
+    const radiusXZ = Math.hypot(halfX, halfZ); // Y軸回転で外側に出る最大半径
+    // 外接球的な半径（縦・横どちらにも余白を確保するため Y も含める）
+    const sphereRadius = Math.max(radiusXZ, halfY);
+    modelBoundingRadius = sphereRadius;
+
+    // 注視点はモデル中心
+    cameraTarget.set(fittedCenter.x, fittedCenter.y, fittedCenter.z);
+
+    // 影プレートをモデル下端に追従（はみ出した小さなモデルでも違和感を減らす）
+    shadowMesh.scale.setScalar(Math.max(0.6, radiusXZ * 1.1));
+    shadowMesh.position.y = fittedBox.min.y + 0.001;
+
+    // 5) カメラ位置をフィット
+    fitCameraToModel();
+}
+
+/**
+ * 現在のキャンバスサイズと modelBoundingRadius からカメラ距離を計算し、
+ * モデルが必ずビュー内に収まるようカメラ位置・near/far を調整する。
+ */
+function fitCameraToModel() {
+    const rect = canvasContainer.getBoundingClientRect();
+    const aspect = Math.max(0.1, rect.width / Math.max(1, rect.height));
+
+    // 縦方向の半画角(rad)、横方向の半画角(rad)
+    const vFov = THREE.MathUtils.degToRad(camera.fov);
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+
+    // 球が両方向ともビューに収まるための距離。狭い方を基準にとる
+    const r = modelBoundingRadius;
+    const distV = r / Math.sin(vFov / 2);
+    const distH = r / Math.sin(hFov / 2);
+    let dist = Math.max(distV, distH);
+
+    // 視覚的な余白（10%）と最小距離（近すぎ防止）
+    dist *= 1.10;
+    dist = Math.max(dist, r * 1.5);
+
+    // カメラはモデル中心の少し上から、Z+ 方向に dist 離れた位置に
+    camera.position.set(
+        cameraTarget.x,
+        cameraTarget.y + r * 0.15, // ほんの少し上から見下ろす
+        cameraTarget.z + dist
+    );
+    camera.lookAt(cameraTarget);
+
+    // near/far も適切に
+    camera.near = Math.max(0.01, dist - r * 4);
+    camera.far  = dist + r * 6 + 10;
+    camera.updateProjectionMatrix();
 }
 
 /** GLB の ArrayBuffer / URL からロード */
@@ -264,7 +345,7 @@ function loadDefaultModel() {
 // 初期化
 loadDefaultModel();
 
-// リサイズ
+// リサイズ: キャンバスサイズに合わせてレンダラ・カメラを更新し、再フィット
 function resizeRenderer() {
     const rect = canvasContainer.getBoundingClientRect();
     const w = Math.max(1, Math.floor(rect.width));
@@ -272,19 +353,24 @@ function resizeRenderer() {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    // モデルが配置済みなら、縦横比に応じてカメラ距離を再計算
+    fitCameraToModel();
 }
 new ResizeObserver(resizeRenderer).observe(canvasContainer);
 resizeRenderer();
 
-// 描画ループ
+// 描画ループ（呼吸アニメは「基準Y + sin」で実装してドリフトを防ぐ）
 function animate() {
     requestAnimationFrame(animate);
     const delta = clock.getDelta();
     if (mixer) mixer.update(delta);
     if (currentModel) {
         currentModel.rotation.y += delta * 0.5;
+        if (breatheBaseY === null) breatheBaseY = currentModel.position.y;
         const t = clock.elapsedTime;
-        currentModel.position.y += Math.sin(t * 2) * 0.0008;
+        // 振幅は外接半径に応じてごく小さく（はみ出し防止）
+        const amp = Math.min(0.04, modelBoundingRadius * 0.02);
+        currentModel.position.y = breatheBaseY + Math.sin(t * 2) * amp;
     }
     renderer.render(scene, camera);
 }
