@@ -3,24 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="封入封緘作業用タイムキーパーアプリ。3Dキャラクターと音声でペースを支援します。">
-    <title>封入封緘タイムキーパー</title>
-    <!-- インライン SVG の favicon -->
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111827'/%3E%3Ctext x='50%25' y='62%25' font-size='38' text-anchor='middle' fill='white' font-family='sans-serif'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+    <meta name="description" content="作業用タイムキーパーアプリ。3Dキャラクターと音声でペースを支援します。">
+    <title>タイムキーパー</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111827'/%3E%3Ctext x='50%25' y='62%25' font-size='38' text-anchor='middle' fill='white' font-family='sans-serif'%3E%E2%8F%B1%3C/text%3E%3C/svg%3E">
 
-    <!-- LINE Seed JP（本文）+ Orbitron（時計の数字のみ）
-         LINE Seed JP は Fontsource(@fontsource/line-seed-jp) を jsDelivr CDN 経由で配信 -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/line-seed-jp/400.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/line-seed-jp/700.css">
-    <!-- 時計の数字専用フォント（角ばったSF/デジタル感） -->
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="style.css">
 
-    <!-- Three.js は CDN 経由で読み込み（GitHub Pages 配信前提） -->
     <script type="importmap">
     {
         "imports": {
@@ -33,27 +28,24 @@
 <body>
     <div class="app">
         <header class="header">
-            <h1>📦 封入封緘タイムキーパー</h1>
+            <h1>⏱ タイムキーパー</h1>
             <p class="subtitle">3Dキャラクターと一緒に、コツコツ作業しよう！</p>
         </header>
 
         <main class="main">
-            <!-- ========== 主役: デジタル時計風タイマー ========== -->
+            <!-- ★ 16:9横長レイアウト: 時計（左）+ マスコット（右） ★ -->
             <section class="timer-panel">
-                <!-- 状態バー -->
                 <div class="status-bar">
                     <span id="status-label" class="status-label status-idle">待機中</span>
                     <span id="set-info" class="set-info">セット 0 / 0</span>
                 </div>
 
-                <!-- ★ デジタル時計（中央配置） ★ -->
                 <div class="clock-display">
+                    <!-- 左側: 時計本体 -->
                     <div class="clock-screen">
-                        <!-- 走査線・ピクセルグロー演出レイヤー -->
                         <div class="clock-scanlines" aria-hidden="true"></div>
                         <div class="clock-glow" aria-hidden="true"></div>
 
-                        <!-- 上部メタ情報（ラベル + セット数） -->
                         <div class="clock-meta">
                             <div class="clock-corner-label" id="clock-corner-label">
                                 <span class="corner-dot" aria-hidden="true"></span>
@@ -64,26 +56,28 @@
                             </div>
                         </div>
 
-                        <!-- 中央のメイン表示（数字を完全中央に） -->
                         <div class="clock-main">
                             <div class="time-digits-wrap">
-                                <span class="time-ghost" aria-hidden="true">88:88</span>
+                                <span class="time-ghost" aria-hidden="true">
+                                    <span class="dchar">8</span><span class="dchar">8</span><span class="dcolon">:</span><span class="dchar">8</span><span class="dchar">8</span>
+                                </span>
                                 <span id="time-remaining" class="time-digits">
-                                    <span class="seg-mm">00</span><span class="seg-colon">:</span><span class="seg-ss">00</span>
+                                    <span class="seg-mm">
+                                        <span class="dchar" data-pos="m1">0</span><span class="dchar" data-pos="m2">0</span>
+                                    </span><span class="seg-colon dcolon">:</span><span class="seg-ss">
+                                        <span class="dchar" data-pos="s1">0</span><span class="dchar" data-pos="s2">0</span>
+                                    </span>
                                 </span>
                             </div>
                             <div id="phase-text" class="phase-text">スタートを押してね</div>
                         </div>
 
-                        <!-- 下部のプログレス -->
                         <div class="clock-bottom">
-                            <div class="progress-segments" id="progress-segments" aria-hidden="true">
-                                <!-- script.js で 20 個のセグメントを生成 -->
-                            </div>
+                            <div class="progress-segments" id="progress-segments" aria-hidden="true"></div>
                         </div>
                     </div>
 
-                    <!-- ★ マスコットは時計の外（下）に独立配置 ★ -->
+                    <!-- 右側: マスコット -->
                     <div class="mascot-stage">
                         <div id="canvas-container" class="canvas-container">
                             <div id="loading-overlay" class="loading-overlay">
@@ -96,7 +90,6 @@
                     </div>
                 </div>
 
-                <!-- 操作ボタン -->
                 <div class="control-buttons">
                     <button id="start-btn" class="btn btn-primary">▶ スタート</button>
                     <button id="pause-btn" class="btn btn-secondary" disabled>⏸ 一時停止</button>
@@ -104,25 +97,16 @@
                 </div>
             </section>
 
-            <!-- ========== 設定エリア（折りたたみで邪魔にならない） ========== -->
             <section class="settings-section">
-
-                <!-- スケジュール設定 -->
                 <details class="settings collapsible" open>
                     <summary><h3>⚙️ スケジュール</h3></summary>
-
                     <div class="settings-header" style="margin-top:8px">
                         <span></span>
                         <div class="mode-tabs" role="tablist">
-                            <button class="mode-tab active" data-mode="duration" role="tab">
-                                ⏱ 時間指定
-                            </button>
-                            <button class="mode-tab" data-mode="schedule" role="tab">
-                                🕐 時刻指定
-                            </button>
+                            <button class="mode-tab active" data-mode="duration" role="tab">⏱ 時間指定</button>
+                            <button class="mode-tab" data-mode="schedule" role="tab">🕐 時刻指定</button>
                         </div>
                     </div>
-
                     <div id="mode-duration" class="mode-pane active">
                         <div class="setting-row">
                             <label for="work-minutes">作業時間（分）</label>
@@ -137,7 +121,6 @@
                             <input type="number" id="total-sets" min="1" max="20" value="3">
                         </div>
                     </div>
-
                     <div id="mode-schedule" class="mode-pane">
                         <p class="hint" style="margin-bottom:8px">
                             各セットの「作業の開始-終了時刻」を指定します。<br>
@@ -151,25 +134,17 @@
                     </div>
                 </details>
 
-                <!-- マスコット切替 -->
                 <details class="settings collapsible">
                     <summary><h3>🤖 マスコット</h3></summary>
                     <div class="model-controls" style="margin-top:8px">
-                        <label for="glb-file" class="file-label">
-                            📁 別の .glb をアップロード
-                        </label>
+                        <label for="glb-file" class="file-label">📁 別の .glb をアップロード</label>
                         <input type="file" id="glb-file" accept=".glb,.gltf" hidden>
-                        <button id="reset-model-btn" class="btn btn-ghost btn-small" title="デフォルトモデルに戻す">
-                            🔄 デフォルトに戻す
-                        </button>
+                        <button id="reset-model-btn" class="btn btn-ghost btn-small" title="デフォルトモデルに戻す">🔄 デフォルトに戻す</button>
                     </div>
-
-                    <!-- 向き（Y軸回転）スライダー -->
                     <div class="setting-row" style="margin-top:8px">
-                        <label for="mascot-yaw">向き <span id="mascot-yaw-val">0°</span></label>
-                        <input type="range" id="mascot-yaw" min="-180" max="180" step="1" value="0">
+                        <label for="mascot-yaw">向き <span id="mascot-yaw-val">90°</span></label>
+                        <input type="range" id="mascot-yaw" min="-180" max="180" step="1" value="90">
                     </div>
-                    <!-- 上下チルト（X軸） -->
                     <div class="setting-row">
                         <label for="mascot-pitch">うなずき <span id="mascot-pitch-val">0°</span></label>
                         <input type="range" id="mascot-pitch" min="-45" max="45" step="1" value="0">
@@ -180,20 +155,18 @@
                             <button class="btn btn-ghost btn-small orient-preset" data-yaw="0">正面</button>
                             <button class="btn btn-ghost btn-small orient-preset" data-yaw="-30">左斜め</button>
                             <button class="btn btn-ghost btn-small orient-preset" data-yaw="30">右斜め</button>
+                            <button class="btn btn-ghost btn-small orient-preset" data-yaw="90">右90°</button>
                             <button class="btn btn-ghost btn-small orient-preset" data-yaw="180">後ろ</button>
                         </div>
                     </div>
-
                     <p class="hint">
                         ※ 起動時はリポジトリ内の <code>assets/character.glb</code> を自動読み込み。<br>
-                        　右下のマスコット枠へ <strong>ドラッグ&amp;ドロップ</strong> でも差し替え可能。
+                        　マスコット枠へ <strong>ドラッグ&amp;ドロップ</strong> でも差し替え可能。
                     </p>
                 </details>
 
-                <!-- 音声・通知設定 -->
                 <details class="settings collapsible">
                     <summary><h3>🔊 音声・通知設定</h3></summary>
-
                     <div class="setting-row toggle-row" style="margin-top:8px">
                         <label for="encourage-toggle">励ましボイス</label>
                         <label class="switch">
@@ -201,7 +174,6 @@
                             <span class="slider"></span>
                         </label>
                     </div>
-
                     <div class="setting-row">
                         <label for="voice-select">音声モデル</label>
                         <select id="voice-select"></select>
@@ -218,29 +190,22 @@
                         <button id="voice-preview-btn" class="btn btn-ghost btn-small">▶ 試し再生</button>
                         <button id="voice-stop-btn" class="btn btn-ghost btn-small">■ 停止</button>
                     </div>
-
                     <h4 class="subsection-title">📝 セリフ編集</h4>
                     <p class="hint" style="margin:4px 0 8px">
-                        プレースホルダ:
-                        <code>{set}</code>=セット番号 / <code>{total}</code>=総セット数 /
+                        プレースホルダ: <code>{set}</code>=セット番号 / <code>{total}</code>=総セット数 /
                         <code>{remain}</code>=残り分 / <code>{end}</code>=終了時刻
                     </p>
                     <div class="script-editor">
                         <label>作業開始</label>
                         <textarea id="script-work-start" rows="2"></textarea>
-
                         <label>休憩開始（作業終了）</label>
                         <textarea id="script-break-start" rows="2"></textarea>
-
                         <label>全完了</label>
                         <textarea id="script-all-done" rows="2"></textarea>
-
                         <label>励まし: 折り返し時</label>
                         <textarea id="script-encourage-half" rows="2"></textarea>
-
                         <label>励まし: 残り5分</label>
                         <textarea id="script-encourage-five" rows="2"></textarea>
-
                         <div class="script-editor-actions">
                             <button id="script-reset-btn" class="btn btn-ghost btn-small">セリフを初期値に戻す</button>
                         </div>
@@ -250,7 +215,7 @@
         </main>
 
         <footer class="footer">
-            <small>© Timekeeper for Envelope Stuffing &middot; Three.js + Web Speech API</small>
+            <small>© Timekeeper &middot; Three.js + Web Speech API</small>
         </footer>
     </div>
 
